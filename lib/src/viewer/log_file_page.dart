@@ -406,7 +406,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
+        color: color.withAlpha(18),
         borderRadius: BorderRadius.circular(7),
         border: Border(left: BorderSide(color: color, width: 3)),
       ),

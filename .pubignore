@@ -1,0 +1,6 @@
+.dart_tool/
+.idea/
+.worktrees/
+build/
+docs/
+*.iml

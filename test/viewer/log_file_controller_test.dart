@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_log_file/flutter_log_file.dart';
-import 'package:flutter_log_file/src/storage/log_file_manager.dart';
-import 'package:flutter_log_file/src/viewer/log_file_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -180,7 +180,7 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
     return Material(
       color: selected
           ? colors.primaryContainer
-          : colors.surfaceContainerHighest.withValues(alpha: 0.52),
+          : colors.surfaceContainerHighest.withAlpha(133),
       borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
