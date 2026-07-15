@@ -106,5 +106,30 @@ void main() {
         '{"name":"Ada"}',
       );
     });
+
+    test('bounds collection nodes and string characters while normalizing', () {
+      final serializer = MessageSerializer(
+        maximumNodes: 8,
+        maximumCharacters: 24,
+        maximumDepth: 4,
+      );
+
+      final rendered = serializer.serialize({
+        'message': 'x' * 1000,
+        'items': List<int>.generate(1000, (index) => index),
+      }).render();
+
+      expect(rendered, contains('truncated'));
+      expect(rendered.length, lessThan(200));
+    });
+
+    test('character limits do not split Unicode surrogate pairs', () {
+      final rendered = MessageSerializer(
+        maximumCharacters: 1,
+      ).serialize('🙂🙂').render();
+
+      expect(rendered, '…[truncated]');
+      expect(rendered.runes, everyElement(isNot(0xD83D)));
+    });
   });
 }

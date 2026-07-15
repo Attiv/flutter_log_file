@@ -15,6 +15,7 @@ void main() {
       expect(config.splitByDay, isTrue);
       expect(config.retentionDays, 30);
       expect(config.maxFileSizeBytes, 50 * 1024 * 1024);
+      expect(config.queueByteCapacity, 8 * 1024 * 1024);
       expect(config.captureFlutterErrors, isFalse);
       expect(config.capturePlatformErrors, isFalse);
       expect(config.redactedKeys, isEmpty);
@@ -38,6 +39,7 @@ void main() {
       expect(() => LogConfig(retentionDays: -1), throwsArgumentError);
       expect(() => LogConfig(maxFileSizeBytes: 0), throwsArgumentError);
       expect(() => LogConfig(queueCapacity: 0), throwsArgumentError);
+      expect(() => LogConfig(queueByteCapacity: 0), throwsArgumentError);
     });
 
     test('uses empty sensitive-data configuration by default', () {

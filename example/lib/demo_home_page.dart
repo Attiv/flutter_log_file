@@ -53,7 +53,9 @@ final class _DemoHomePageState extends State<DemoHomePage>
     _splitByDay = config?.splitByDay ?? true;
     _consoleUseColors = config?.consoleUseColors ?? true;
     _minimumLevel = config?.minimumLevel ?? LogLevel.verbose;
-    _messageController = TextEditingController(text: '这是一条 VLog 示例消息');
+    _messageController = TextEditingController(
+      text: 'This is a VLog sample message',
+    );
     _tagController = TextEditingController(text: 'Demo');
     _prefixController = TextEditingController(
       text: config?.filePrefix ?? 'vlog_demo',
@@ -88,7 +90,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
           children: [
             Text('VLog Playground'),
             Text(
-              'Android · Windows 日志体验台',
+              'Android · Windows logging playground',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
             ),
           ],
@@ -100,7 +102,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
               key: const Key('open-viewer'),
               onPressed: _openViewer,
               icon: const Icon(Icons.manage_search_rounded),
-              label: const Text('查看日志'),
+              label: const Text('View logs'),
             ),
           ),
         ],
@@ -156,49 +158,49 @@ final class _DemoHomePageState extends State<DemoHomePage>
   Widget _buildConfigCard() {
     return _SectionCard(
       icon: Icons.tune_rounded,
-      title: '输出配置',
-      subtitle: '修改后点击应用，会创建新的 VLog session。',
+      title: 'Output configuration',
+      subtitle: 'Applying changes creates a new VLog session.',
       child: Column(
         children: [
           _ConfigSwitch(
             key: const Key('console-enabled-switch'),
-            title: '终端输出',
-            subtitle: '将日志输出到调试终端',
+            title: 'Console output',
+            subtitle: 'Print logs to the debug console',
             value: _consoleEnabled,
             onChanged: (value) => setState(() => _consoleEnabled = value),
           ),
           _ConfigSwitch(
             key: const Key('file-enabled-switch'),
-            title: '文件输出',
-            subtitle: '写入应用私有 Support/logs 目录',
+            title: 'File output',
+            subtitle: 'Write logs to the private Support/logs directory',
             value: _fileEnabled,
             onChanged: (value) => setState(() => _fileEnabled = value),
           ),
           _ConfigSwitch(
             key: const Key('show-tag-switch'),
-            title: '显示 Tag',
-            subtitle: 'Tag 仍然可以不传',
+            title: 'Show tag',
+            subtitle: 'The tag remains optional for every log call',
             value: _showTag,
             onChanged: (value) => setState(() => _showTag = value),
           ),
           _ConfigSwitch(
             key: const Key('pretty-json-switch'),
-            title: '格式化 JSON',
-            subtitle: '默认关闭，打开后多行展示',
+            title: 'Pretty JSON',
+            subtitle: 'Disabled by default; enabled output uses multiple lines',
             value: _prettyJson,
             onChanged: (value) => setState(() => _prettyJson = value),
           ),
           _ConfigSwitch(
             key: const Key('split-by-day-switch'),
-            title: '按天生成文件',
-            subtitle: '跨过零点后自动切换文件',
+            title: 'Split files by day',
+            subtitle: 'Automatically switch files after midnight',
             value: _splitByDay,
             onChanged: (value) => setState(() => _splitByDay = value),
           ),
           _ConfigSwitch(
             key: const Key('console-colors-switch'),
-            title: '终端颜色',
-            subtitle: '仅影响终端，不写入日志文件',
+            title: 'Console colors',
+            subtitle: 'Affects the console only, never log files',
             value: _consoleUseColors,
             onChanged: (value) => setState(() => _consoleUseColors = value),
           ),
@@ -207,7 +209,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
             key: const Key('prefix-field'),
             controller: _prefixController,
             decoration: const InputDecoration(
-              labelText: '日志文件前缀',
+              labelText: 'Log file prefix',
               prefixIcon: Icon(Icons.description_outlined),
             ),
           ),
@@ -216,7 +218,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
             key: const Key('minimum-level-field'),
             value: _minimumLevel,
             decoration: const InputDecoration(
-              labelText: '最低日志等级',
+              labelText: 'Minimum log level',
               prefixIcon: Icon(Icons.filter_alt_outlined),
             ),
             items: LogLevel.values
@@ -243,7 +245,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.check_circle_outline_rounded),
-              label: Text(_applying ? '正在应用…' : '应用配置'),
+              label: Text(_applying ? 'Applying…' : 'Apply configuration'),
             ),
           ),
         ],
@@ -254,8 +256,8 @@ final class _DemoHomePageState extends State<DemoHomePage>
   Widget _buildPlaygroundCard() {
     return _SectionCard(
       icon: Icons.terminal_rounded,
-      title: '日志实验台',
-      subtitle: '每次点击都会写入当前启用的输出端。',
+      title: 'Log playground',
+      subtitle: 'Each action writes to the currently enabled outputs.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -265,7 +267,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
             minLines: 2,
             maxLines: 4,
             decoration: const InputDecoration(
-              labelText: '日志内容',
+              labelText: 'Log message',
               alignLabelWithHint: true,
               prefixIcon: Icon(Icons.notes_rounded),
             ),
@@ -275,12 +277,12 @@ final class _DemoHomePageState extends State<DemoHomePage>
             key: const Key('tag-field'),
             controller: _tagController,
             decoration: const InputDecoration(
-              labelText: 'Tag（可留空）',
+              labelText: 'Tag (optional)',
               prefixIcon: Icon(Icons.sell_outlined),
             ),
           ),
           const SizedBox(height: 16),
-          Text('日志等级', style: Theme.of(context).textTheme.titleSmall),
+          Text('Log levels', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -296,7 +298,10 @@ final class _DemoHomePageState extends State<DemoHomePage>
                 .toList(),
           ),
           const SizedBox(height: 22),
-          Text('结构化与异常', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Structured data and errors',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -312,26 +317,26 @@ final class _DemoHomePageState extends State<DemoHomePage>
                 key: const Key('log-object'),
                 onPressed: _writeObjects,
                 icon: const Icon(Icons.person_outline_rounded),
-                label: const Text('对象'),
+                label: const Text('Objects'),
               ),
               OutlinedButton.icon(
                 key: const Key('log-exception'),
                 onPressed: _writeError,
                 icon: const Icon(Icons.bug_report_outlined),
-                label: const Text('异常与堆栈'),
+                label: const Text('Error & stack trace'),
               ),
               OutlinedButton.icon(
                 key: const Key('log-burst'),
                 onPressed: _writeBurst,
                 icon: const Icon(Icons.bolt_rounded),
-                label: const Text('生成 200 条'),
+                label: const Text('Generate 200 logs'),
               ),
             ],
           ),
           const SizedBox(height: 22),
           _TipBox(
             text:
-                '快速定位建议：为业务模块使用稳定 Tag，并在消息中加入订单号、设备号或请求 ID。然后在查看页组合 Tag、等级、日期和关键词搜索。',
+                'Quick location tip: use stable tags for each module and include an order ID, device ID, or request ID in the message. Combine tags, levels, dates, and keywords in the viewer.',
           ),
           const SizedBox(height: 16),
           Row(
@@ -340,20 +345,20 @@ final class _DemoHomePageState extends State<DemoHomePage>
                 child: FilledButton.tonalIcon(
                   onPressed: _openViewer,
                   icon: const Icon(Icons.manage_search_rounded),
-                  label: const Text('打开日志查看器'),
+                  label: const Text('Open log viewer'),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 key: const Key('flush-logs'),
-                tooltip: '立即刷新日志',
+                tooltip: 'Flush logs now',
                 onPressed: _flushLogs,
                 icon: const Icon(Icons.sync_rounded),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 key: const Key('clear-logs'),
-                tooltip: '清空日志',
+                tooltip: 'Clear logs',
                 onPressed: _confirmClearLogs,
                 icon: const Icon(Icons.delete_sweep_outlined),
               ),
@@ -387,7 +392,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
       case LogLevel.fatal:
         VLog.f(message, tag: _tag);
     }
-    _showMessage('${_levelLabel(level)} 日志已发送');
+    _showMessage('${_levelLabel(level)} log sent');
   }
 
   void _writeJson() {
@@ -399,13 +404,14 @@ final class _DemoHomePageState extends State<DemoHomePage>
         'success': true,
         'payload': {
           'items': ['keyboard', 'mouse'],
-          'authorization': '默认不会脱敏，需显式配置 redactedKeys',
+          'authorization':
+              'Redaction is disabled until redactedKeys is configured',
         },
       },
       tag: _tag ?? 'Network',
       fields: const {'source': 'demo-json'},
     );
-    _showMessage('JSON 示例已发送');
+    _showMessage('JSON sample sent');
   }
 
   void _writeObjects() {
@@ -422,7 +428,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
     );
     VLog.i(user, tag: _tag ?? 'User');
     VLog.i(order, tag: _tag ?? 'Order');
-    _showMessage('toJson() 与自定义编码器对象已发送');
+    _showMessage('toJson() and custom encoder samples sent');
   }
 
   void _writeError() {
@@ -434,24 +440,24 @@ final class _DemoHomePageState extends State<DemoHomePage>
       stackTrace: StackTrace.current,
       fields: const {'requestId': 'REQ-DEMO-ERROR', 'retry': 3},
     );
-    _showMessage('异常、字段和 StackTrace 已发送');
+    _showMessage('Error, fields, and stack trace sent');
   }
 
   void _writeBurst() {
     for (var index = 1; index <= 200; index++) {
       VLog.d(
-        '批量日志 $index / 200',
+        'Burst log $index / 200',
         tag: 'Burst',
         fields: {'batch': 'DEMO-BATCH', 'index': index},
       );
     }
-    _showMessage('已生成 200 条日志，可体验懒加载与搜索');
+    _showMessage('Generated 200 logs for lazy loading and search');
   }
 
   Future<void> _applyConfiguration() async {
     final prefix = _prefixController.text.trim();
     if (prefix.isEmpty) {
-      _showMessage('日志文件前缀不能为空', error: true);
+      _showMessage('The log file prefix cannot be empty', error: true);
       return;
     }
     setState(() => _applying = true);
@@ -482,34 +488,40 @@ final class _DemoHomePageState extends State<DemoHomePage>
       );
       if (mounted) {
         setState(() {});
-        _showMessage('配置已应用，并创建了新的 VLog session');
+        _showMessage('Configuration applied. A new VLog session was created.');
       }
     } catch (error) {
-      if (mounted) _showMessage('应用配置失败：$error', error: true);
+      if (mounted) {
+        _showMessage('Failed to apply configuration: $error', error: true);
+      }
     } finally {
-      if (mounted) setState(() => _applying = false);
+      if (mounted) {
+        setState(() => _applying = false);
+      }
     }
   }
 
   Future<void> _flushLogs() async {
     await VLog.flush();
-    if (mounted) _showMessage('日志已刷新到输出端');
+    if (mounted) _showMessage('Logs flushed to all enabled outputs');
   }
 
   Future<void> _confirmClearLogs() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空全部日志？'),
-        content: const Text('此操作会删除当前 VLog 目录中的全部日志文件。'),
+        title: const Text('Clear all logs?'),
+        content: const Text(
+          'This deletes every log file in the current VLog directory.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('清空'),
+            child: const Text('Clear'),
           ),
         ],
       ),
@@ -518,7 +530,7 @@ final class _DemoHomePageState extends State<DemoHomePage>
     await VLog.clearLogs();
     if (mounted) {
       setState(() {});
-      _showMessage('日志文件已清空');
+      _showMessage('Log files cleared');
     }
   }
 
@@ -561,8 +573,8 @@ final class _StatusCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return _SectionCard(
       icon: Icons.monitor_heart_outlined,
-      title: '运行状态',
-      subtitle: initialized ? 'VLog 已初始化' : 'VLog 尚未初始化',
+      title: 'Runtime status',
+      subtitle: initialized ? 'VLog is initialized' : 'VLog is not initialized',
       trailing: Container(
         width: 10,
         height: 10,
@@ -581,13 +593,13 @@ final class _StatusCard extends StatelessWidget {
       child: Column(
         children: [
           _StatusRow(
-            label: '文件前缀',
+            label: 'File prefix',
             value: filePrefix ?? '—',
           ),
           const SizedBox(height: 10),
           _StatusRow(
-            label: '日志目录',
-            value: directory ?? '文件输出未启用',
+            label: 'Log directory',
+            value: directory ?? 'File output is disabled',
             valueKey: const Key('status-directory'),
           ),
         ],

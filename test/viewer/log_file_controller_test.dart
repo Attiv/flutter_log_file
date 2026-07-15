@@ -111,4 +111,21 @@ void main() {
     expect(controller.lines.last.text, 'line-19');
     await controller.close();
   });
+
+  test('close cancels the live write subscription', () async {
+    final cancelled = Completer<void>();
+    final events = StreamController<LogWriteNotification>.broadcast(
+      onCancel: cancelled.complete,
+    );
+    final controller = LogFileController(
+      filePath: file.path,
+      writeNotifications: events.stream,
+    );
+
+    await controller.open();
+    await controller.close();
+
+    await expectLater(cancelled.future, completes);
+    await events.close();
+  });
 }

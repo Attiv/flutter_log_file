@@ -75,6 +75,46 @@ void main() {
     expect(content, contains('before-init'));
   });
 
+  test('pre-initialization buffer snapshots mutable values', () async {
+    final values = <int>[1];
+    VLog.i({'values': values});
+    values.add(2);
+
+    await VLog.init(
+      LogConfig(
+        directoryPath: root.path,
+        consoleEnabled: false,
+        flushInterval: Duration.zero,
+      ),
+    );
+    await VLog.flush();
+
+    final content =
+        await File((await VLog.getLogFiles()).single.path).readAsString();
+    expect(content, contains('{"values":[1]}'));
+    expect(content, isNot(contains('{"values":[1,2]}')));
+  });
+
+  test('pre-initialization snapshots still honor configured redaction',
+      () async {
+    VLog.i({'token': 'secret'});
+
+    await VLog.init(
+      LogConfig(
+        directoryPath: root.path,
+        consoleEnabled: false,
+        redactedKeys: {'token'},
+        flushInterval: Duration.zero,
+      ),
+    );
+    await VLog.flush();
+
+    final content =
+        await File((await VLog.getLogFiles()).single.path).readAsString();
+    expect(content, contains('{"token":"***"}'));
+    expect(content, isNot(contains('secret')));
+  });
+
   test('registered object encoder is shared by file sink', () async {
     VLog.registerEncoder<DeviceState>((state) => {'deviceId': state.id});
     await VLog.init(

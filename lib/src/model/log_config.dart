@@ -8,9 +8,10 @@ typedef LogDirectoryResolver = Future<String> Function();
 
 /// Configuration for [VLog].
 ///
-/// File and console sinks can be enabled and filtered independently. Sensitive
-/// data processing is opt-in: [redactedKeys] and [redactors] are empty unless
-/// explicitly supplied.
+/// File and console sinks can be enabled and filtered independently. The
+/// asynchronous queue is bounded by both [queueCapacity] and
+/// [queueByteCapacity]. Sensitive data processing is opt-in: [redactedKeys]
+/// and [redactors] are empty unless explicitly supplied.
 final class LogConfig {
   LogConfig({
     this.consoleEnabled = true,
@@ -38,6 +39,7 @@ final class LogConfig {
     this.retentionDays = 30,
     this.maxFileSizeBytes = 50 * 1024 * 1024,
     this.queueCapacity = 10000,
+    this.queueByteCapacity = 8 * 1024 * 1024,
     this.overflowPolicy = LogQueueOverflowPolicy.dropLowestLevel,
     this.flushInterval = const Duration(seconds: 1),
     this.flushOnLevel = LogLevel.error,
@@ -62,6 +64,13 @@ final class LogConfig {
     }
     if (queueCapacity <= 0) {
       throw ArgumentError.value(queueCapacity, 'queueCapacity', 'must be > 0');
+    }
+    if (queueByteCapacity <= 0) {
+      throw ArgumentError.value(
+        queueByteCapacity,
+        'queueByteCapacity',
+        'must be > 0',
+      );
     }
     if (maxEntryBytes <= 0) {
       throw ArgumentError.value(maxEntryBytes, 'maxEntryBytes', 'must be > 0');
@@ -115,6 +124,7 @@ final class LogConfig {
   final int retentionDays;
   final int maxFileSizeBytes;
   final int queueCapacity;
+  final int queueByteCapacity;
   final LogQueueOverflowPolicy overflowPolicy;
   final Duration flushInterval;
   final LogLevel flushOnLevel;

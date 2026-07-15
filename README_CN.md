@@ -13,11 +13,14 @@
 - Android/Windows 默认使用 App Support 私有目录，无公共存储权限；
 - 默认 `app_log_yyyy-MM-dd.txt`，支持自定义前缀、扩展名和按天开文件；
 - 默认保留 30 天、单文件 50 MB，均可配置；
+- 异步队列同时限制条数和保留字节数，默认 10,000 条和 8 MB；
 - Map/List、`toJson()` 和自定义对象编码器；
 - JSON 紧凑/美化可分别配置，默认不美化；
 - 可选接管 Flutter 和平台异常，默认不接管原处理器；
 - `VLogViewerPage` / `VLogFilePage` 支持懒加载、实时追踪、搜索、正则、等级/Tag/日期过滤、复制、分享和删除；
 - 搜索在 Isolate 中执行，查看页只保留有界字节窗口，不把完整大文件载入内存。
+
+队列、查看器、搜索和生命周期的内存边界详见英文版 [memory audit](docs/memory-audit.md)。
 
 ## 安装
 
@@ -199,7 +202,7 @@ await VLog.flush();
 await VLog.close();
 ```
 
-日志调用本身不需要 `await`。队列有上限，默认在队列满时优先保留高等级日志；`error/fatal` 会触发 Sink 刷新。
+日志调用本身不需要 `await`。队列同时受 `queueCapacity`（默认 10,000 条）和 `queueByteCapacity`（默认 8 MB）限制，队列满时优先保留高等级日志。消息、fields、error 和 StackTrace 会在进入异步队列前转换为有界快照，不会长期持有业务对象图；`error/fatal` 会触发 Sink 刷新。
 
 ## 限制
 

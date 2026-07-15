@@ -35,6 +35,7 @@ final class LogFileController extends ChangeNotifier {
   bool _hasMoreBefore = false;
   bool _hasMoreAfter = false;
   Object? _error;
+  int _decodedBytes = 0;
 
   List<LogFileLine> get lines => List.unmodifiable(_lines);
   bool get isLoading => _loading;
@@ -42,7 +43,7 @@ final class LogFileController extends ChangeNotifier {
   bool get hasMoreBefore => _hasMoreBefore;
   bool get hasMoreAfter => _hasMoreAfter;
   Object? get error => _error;
-  int get decodedBytes => _lines.fold(0, (sum, line) => sum + line.byteLength);
+  int get decodedBytes => _decodedBytes;
 
   Future<void> open() async {
     if (_opened || _closed) {
@@ -54,7 +55,10 @@ final class LogFileController extends ChangeNotifier {
   }
 
   Future<void> refreshTail() => _guard(() async {
-        final chunk = await _reader.readTail(maxLines: config.initialTailLines);
+        final chunk = await _reader.readTail(
+          maxLines: config.initialTailLines,
+          maximumBytes: config.memoryBudgetBytes,
+        );
         _replace(chunk);
       });
 
@@ -64,6 +68,7 @@ final class LogFileController extends ChangeNotifier {
         }
         final chunk = await _reader.readBefore(_lines.first.startOffset);
         _lines.insertAll(0, chunk.lines);
+        _decodedBytes += _lineBytes(chunk.lines);
         _hasMoreBefore = chunk.hasMoreBefore;
         _trim(addedAtStart: true);
       });
@@ -75,6 +80,7 @@ final class LogFileController extends ChangeNotifier {
         }
         final chunk = await _reader.readAfter(_lines.last.endOffset);
         _lines.addAll(chunk.lines);
+        _decodedBytes += _lineBytes(chunk.lines);
         _hasMoreAfter = chunk.hasMoreAfter;
         _trim(addedAtStart: false);
       });
@@ -139,22 +145,26 @@ final class LogFileController extends ChangeNotifier {
     _lines
       ..clear()
       ..addAll(chunk.lines);
+    _decodedBytes = _lineBytes(chunk.lines);
     _hasMoreBefore = chunk.hasMoreBefore;
     _hasMoreAfter = chunk.hasMoreAfter;
     _trim(addedAtStart: false);
   }
 
   void _trim({required bool addedAtStart}) {
-    while (decodedBytes > config.memoryBudgetBytes && _lines.length > 1) {
+    while (_decodedBytes > config.memoryBudgetBytes && _lines.length > 1) {
       if (addedAtStart) {
-        _lines.removeLast();
+        _decodedBytes -= _lines.removeLast().byteLength;
         _hasMoreAfter = true;
       } else {
-        _lines.removeAt(0);
+        _decodedBytes -= _lines.removeAt(0).byteLength;
         _hasMoreBefore = true;
       }
     }
   }
+
+  int _lineBytes(Iterable<LogFileLine> lines) =>
+      lines.fold(0, (sum, line) => sum + line.byteLength);
 
   @override
   void dispose() {

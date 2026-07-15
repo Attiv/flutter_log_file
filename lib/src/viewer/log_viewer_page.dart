@@ -106,25 +106,27 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
                 icon: const Icon(Icons.close),
               )
             : null,
-        title: Text(selecting ? '已选择 ${_selected.length} 个文件' : 'VLog 日志'),
+        title: Text(
+          selecting ? '${_selected.length} files selected' : 'VLog Logs',
+        ),
         actions: selecting
             ? [
                 IconButton(
                   key: const Key('share-selected-logs'),
-                  tooltip: '分享',
+                  tooltip: 'Share',
                   onPressed: () => _repository.shareFiles(_selected),
                   icon: const Icon(Icons.ios_share_outlined),
                 ),
                 IconButton(
                   key: const Key('delete-selected-logs'),
-                  tooltip: '删除',
+                  tooltip: 'Delete',
                   onPressed: _confirmDelete,
                   icon: const Icon(Icons.delete_outline),
                 ),
               ]
             : [
                 IconButton(
-                  tooltip: '清理过期日志',
+                  tooltip: 'Clean up expired logs',
                   onPressed: () async {
                     await _repository.cleanup();
                     await _reload();
@@ -133,7 +135,7 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
                 ),
                 IconButton(
                   key: const Key('refresh-log-files-action'),
-                  tooltip: '刷新',
+                  tooltip: 'Refresh',
                   onPressed: _reload,
                   icon: const Icon(Icons.refresh),
                 ),
@@ -150,7 +152,7 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
     if (_error != null) {
       return _MessageState(
         icon: Icons.warning_amber_rounded,
-        title: '读取日志失败',
+        title: 'Failed to read logs',
         detail: _error.toString(),
         onRetry: _reload,
       );
@@ -158,8 +160,8 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
     if (_files.isEmpty) {
       return _MessageState(
         icon: Icons.article_outlined,
-        title: '暂无日志文件',
-        detail: '产生第一条文件日志后会显示在这里',
+        title: 'No log files',
+        detail: 'Your first file log will appear here.',
         onRetry: _reload,
       );
     }
@@ -239,7 +241,7 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
                               borderRadius: BorderRadius.circular(99),
                             ),
                             child: Text(
-                              '写入中',
+                              'Active',
                               style: TextStyle(
                                 color: colors.onTertiary,
                                 fontSize: 11,
@@ -261,12 +263,12 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
                 ),
               ),
               IconButton(
-                tooltip: '复制路径',
+                tooltip: 'Copy path',
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: file.path));
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('路径已复制')),
+                      const SnackBar(content: Text('Path copied')),
                     );
                   }
                 },
@@ -297,16 +299,18 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除日志文件？'),
-        content: Text('将永久删除选中的 ${_selected.length} 个文件。'),
+        title: const Text('Delete log files?'),
+        content: Text(
+          'This permanently deletes ${_selected.length} selected files.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -361,7 +365,7 @@ final class _MessageState extends StatelessWidget {
                 key: const Key('refresh-log-files'),
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('刷新'),
+                label: const Text('Refresh'),
               ),
             ],
           ),

@@ -115,7 +115,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
               Text(widget.file.name,
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               Text(
-                '${_controller.lines.length} 行在内存 · ${_size(_controller.decodedBytes)}',
+                '${_controller.lines.length} lines in memory · ${_size(_controller.decodedBytes)}',
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             ],
@@ -123,19 +123,21 @@ final class _VLogFilePageState extends State<VLogFilePage> {
           actions: [
             IconButton(
               key: const Key('toggle-log-search'),
-              tooltip: '搜索',
+              tooltip: 'Search',
               onPressed: () => setState(() => _showSearch = !_showSearch),
               icon: Icon(_showSearch ? Icons.search_off : Icons.search),
             ),
             IconButton(
               key: const Key('toggle-line-wrap'),
-              tooltip: '切换换行',
+              tooltip: 'Toggle line wrapping',
               onPressed: () => setState(() => _wrapLines = !_wrapLines),
               icon: Icon(_wrapLines ? Icons.wrap_text : Icons.notes),
             ),
             IconButton(
               key: const Key('toggle-live-follow'),
-              tooltip: _controller.isFollowing ? '暂停实时追踪' : '恢复实时追踪',
+              tooltip: _controller.isFollowing
+                  ? 'Pause live follow'
+                  : 'Resume live follow',
               onPressed: () => _controller.setFollow(!_controller.isFollowing),
               icon: Icon(
                 _controller.isFollowing
@@ -155,16 +157,16 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'start', child: Text('跳到文件开头')),
-                PopupMenuItem(value: 'end', child: Text('跳到文件末尾')),
+                PopupMenuItem(value: 'start', child: Text('Jump to start')),
+                PopupMenuItem(value: 'end', child: Text('Jump to end')),
                 PopupMenuItem(
                   value: 'smaller',
-                  child: Text('缩小字体'),
+                  child: Text('Decrease font size'),
                 ),
                 PopupMenuItem(
                   key: Key('increase-log-font'),
                   value: 'larger',
-                  child: Text('放大字体'),
+                  child: Text('Increase font size'),
                 ),
               ],
             ),
@@ -172,7 +174,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
             // without opening the overflow menu on wide desktop layouts.
             IconButton(
               key: const Key('increase-log-font'),
-              tooltip: '放大字体',
+              tooltip: 'Increase font size',
               onPressed: () =>
                   setState(() => _fontSize = (_fontSize + 1).clamp(9, 24)),
               icon: const Icon(Icons.text_increase),
@@ -188,15 +190,15 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                 color: Theme.of(context).colorScheme.tertiaryContainer,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-                child: const Text('实时追踪已暂停'),
+                child: const Text('Live follow paused'),
               ),
             if (_controller.error != null)
               MaterialBanner(
-                content: Text('读取失败：${_controller.error}'),
+                content: Text('Read failed: ${_controller.error}'),
                 actions: [
                   TextButton(
                     onPressed: _controller.refreshTail,
-                    child: const Text('重试'),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -223,7 +225,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                     decoration: const InputDecoration(
                       isDense: true,
                       prefixIcon: Icon(Icons.manage_search),
-                      hintText: '关键词或正则表达式',
+                      hintText: 'Keyword or regular expression',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -231,12 +233,12 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                 const SizedBox(width: 8),
                 IconButton.filled(
                   key: const Key('submit-log-search'),
-                  tooltip: '开始搜索',
+                  tooltip: 'Start search',
                   onPressed: _startSearch,
                   icon: const Icon(Icons.arrow_forward),
                 ),
                 IconButton(
-                  tooltip: '搜索过滤',
+                  tooltip: 'Search filters',
                   onPressed: _showFilters,
                   icon: Badge(
                     isLabelVisible: _levels.isNotEmpty ||
@@ -250,20 +252,20 @@ final class _VLogFilePageState extends State<VLogFilePage> {
             Row(
               children: [
                 FilterChip(
-                  label: const Text('区分大小写'),
+                  label: const Text('Case sensitive'),
                   selected: _caseSensitive,
                   onSelected: (value) => setState(() => _caseSensitive = value),
                 ),
                 const SizedBox(width: 8),
                 FilterChip(
-                  label: const Text('正则'),
+                  label: const Text('Regex'),
                   selected: _useRegex,
                   onSelected: (value) => setState(() => _useRegex = value),
                 ),
                 const Spacer(),
                 if (_searchTask != null)
                   IconButton(
-                    tooltip: '取消搜索',
+                    tooltip: 'Cancel search',
                     onPressed: _cancelSearch,
                     icon: const Icon(Icons.stop_circle_outlined),
                   ),
@@ -275,22 +277,25 @@ final class _VLogFilePageState extends State<VLogFilePage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '搜索失败：$_searchError',
+                  'Search failed: $_searchError',
                   style: TextStyle(color: colors.error),
                 ),
               ),
             if (_results.isNotEmpty) ...[
               Row(
                 children: [
-                  Text('${_results.length} 个结果'),
+                  Text(
+                    '${_results.length} '
+                    '${_results.length == 1 ? 'result' : 'results'}',
+                  ),
                   const Spacer(),
                   IconButton(
-                    tooltip: '上一个',
+                    tooltip: 'Previous result',
                     onPressed: () => _moveResult(-1),
                     icon: const Icon(Icons.keyboard_arrow_up),
                   ),
                   IconButton(
-                    tooltip: '下一个',
+                    tooltip: 'Next result',
                     onPressed: () => _moveResult(1),
                     icon: const Icon(Icons.keyboard_arrow_down),
                   ),
@@ -329,7 +334,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_controller.lines.isEmpty) {
-      return const Center(child: Text('文件为空'));
+      return const Center(child: Text('The file is empty'));
     }
     final extraBefore = _controller.hasMoreBefore ? 1 : 0;
     final extraAfter = _controller.hasMoreAfter ? 1 : 0;
@@ -343,7 +348,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
             key: const Key('load-older-logs'),
             onPressed: _controller.loadOlder,
             icon: const Icon(Icons.expand_less),
-            label: const Text('加载更早日志'),
+            label: const Text('Load older logs'),
           );
         }
         final lineIndex = index - extraBefore;
@@ -352,7 +357,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
             key: const Key('load-newer-logs'),
             onPressed: _controller.loadNewer,
             icon: const Icon(Icons.expand_more),
-            label: const Text('加载更新日志'),
+            label: const Text('Load newer logs'),
           );
         }
         return _logRow(_controller.lines[lineIndex], lineIndex);
@@ -395,7 +400,10 @@ final class _VLogFilePageState extends State<VLogFilePage> {
               else
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('点击行可复制异常上下文', style: textStyle),
+                  child: Text(
+                    'Long-press the line to copy error context',
+                    style: textStyle,
+                  ),
                 ),
             ],
           )
@@ -459,7 +467,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
         if (mounted) setState(() => _searchProgress = value);
       });
       _resultSubscription = task.results.listen((result) {
-        if (mounted) setState(() => _results = [..._results, result]);
+        if (mounted) setState(() => _results.add(result));
       });
       unawaited(task.done.then((_) {
         if (mounted && identical(_searchTask, task)) {
@@ -519,7 +527,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('过滤条件', style: Theme.of(context).textTheme.titleLarge),
+                Text('Filters', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 7,
@@ -544,7 +552,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                 TextField(
                   controller: _tagController,
                   decoration: const InputDecoration(
-                    labelText: 'Tag（精确匹配）',
+                    labelText: 'Tag (exact match)',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -553,6 +561,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                   onPressed: () async {
                     final selected = await showDateRangePicker(
                       context: context,
+                      locale: const Locale('en'),
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                       initialDateRange: _dateRange,
@@ -563,7 +572,9 @@ final class _VLogFilePageState extends State<VLogFilePage> {
                     }
                   },
                   icon: const Icon(Icons.date_range),
-                  label: Text(_dateRange == null ? '选择日期范围' : '已设置日期范围'),
+                  label: Text(
+                    _dateRange == null ? 'Select date range' : 'Date range set',
+                  ),
                 ),
               ],
             ),
@@ -586,17 +597,17 @@ final class _VLogFilePageState extends State<VLogFilePage> {
           children: [
             ListTile(
               leading: const Icon(Icons.copy),
-              title: const Text('复制当前行'),
+              title: const Text('Copy current line'),
               onTap: () => _copyAndClose(_controller.lines[index].text),
             ),
             ListTile(
               leading: const Icon(Icons.content_copy),
-              title: const Text('复制前后 5 行'),
+              title: const Text('Copy 5 surrounding lines'),
               onTap: () => _copyAndClose(contextLines.join('\n')),
             ),
             ListTile(
               leading: const Icon(Icons.data_object),
-              title: const Text('复制纯内容（移除日志前缀）'),
+              title: const Text('Copy payload only'),
               onTap: () => _copyAndClose(
                 _copyFormatter.payloadOnly(contextLines),
               ),

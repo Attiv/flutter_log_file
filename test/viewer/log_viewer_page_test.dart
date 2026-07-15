@@ -98,11 +98,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('delete-selected-logs')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('删除'));
+    await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
 
     expect(repository.deleted, ['/logs/app_log.txt']);
-    expect(find.text('暂无日志文件'), findsOneWidget);
+    expect(find.text('No log files'), findsOneWidget);
   });
 
   testWidgets('renders a useful empty state', (tester) async {
@@ -112,7 +112,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('暂无日志文件'), findsOneWidget);
+    expect(find.text('No log files'), findsOneWidget);
     expect(find.byKey(const Key('refresh-log-files')), findsOneWidget);
   });
 }

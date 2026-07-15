@@ -1,62 +1,62 @@
 # VLog Material 3 Demo
 
-这是 `flutter_log_file` 的完整体验 App，支持 Android 和 Windows。Demo 使用本地路径依赖引用上一级 Package，不需要先发布到 pub.dev。
+This is the complete Android and Windows demo for `flutter_log_file`. It uses a local path dependency on the parent package, so publishing to pub.dev is not required.
 
-## 运行
+## Run
 
 ```bash
 cd example
 flutter pub get
 ```
 
-Android：
+Android:
 
 ```bash
 flutter devices
 flutter run -d <android-device-id>
 ```
 
-Windows：
+Windows:
 
 ```bash
 flutter run -d windows
 ```
 
-## 可以体验什么
+## What you can try
 
-### 输出配置
+### Output configuration
 
-- 独立开启或关闭终端、文件输出；
-- 配置是否显示 Tag；
-- 开启或关闭 JSON 格式化；
-- 配置是否按天生成日志文件；
-- 修改日志文件前缀；
-- 开启终端 ANSI 颜色；
-- 设置最低日志等级；
-- 点击“应用配置”创建新的 VLog session。
+- Enable or disable console and file output independently;
+- Show or hide tags;
+- Enable or disable pretty JSON;
+- Split log files by day;
+- Change the log filename prefix;
+- Enable ANSI console colors;
+- Select the minimum log level;
+- Apply changes by creating a new VLog session.
 
-### 日志实验台
+### Log playground
 
-- 输入任意日志内容和可选 Tag；
-- 分别输出 Verbose、Debug、Info、Warning、Error、Fatal；
-- 输出 Map/List 嵌套 JSON；
-- 输出带 `toJson()` 的 `DemoUser`；
-- 使用注册编码器输出 `DemoOrder`；
-- 输出 Error、StackTrace 和结构化 fields；
-- 一次生成 200 条日志，体验大文件懒加载与搜索。
+- Enter any message and an optional tag;
+- Write Verbose, Debug, Info, Warning, Error, and Fatal entries;
+- Write nested Map/List JSON;
+- Write a `DemoUser` through `toJson()`;
+- Write a `DemoOrder` through a registered encoder;
+- Write an error, stack trace, and structured fields;
+- Generate 200 entries at once to exercise lazy loading and search.
 
-### 日志查看器
+### Log viewer
 
-点击右上角“查看日志”或页面底部“打开日志查看器”，进入 Package 自带的 `VLogViewerPage`。可以继续体验：
+Select **View logs** in the app bar or **Open log viewer** in the playground to open the package-provided `VLogViewerPage`. The viewer supports:
 
-- 文件列表、大小、活动文件状态；
-- 从文件尾部懒加载；
-- 实时追踪与暂停；
-- 关键词、正则、等级、Tag 和日期过滤；
-- Isolate 流式搜索与结果定位；
-- 复制、分享、删除和过期日志清理。
+- File size and active-file status;
+- Lazy loading from the end of a file;
+- Live follow and pause;
+- Keyword, regex, level, tag, and date filters;
+- Isolate-based streaming search and result navigation;
+- Copy, share, delete, and expired-log cleanup actions.
 
-## 测试
+## Test
 
 ```bash
 cd example
@@ -64,4 +64,4 @@ flutter analyze
 flutter test
 ```
 
-Widget 测试使用临时目录，不依赖 Android 或 Windows 的目录插件。
+Widget tests use a temporary directory and do not depend on Android or Windows directory plugins.

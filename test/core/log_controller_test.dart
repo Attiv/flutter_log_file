@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_log_file/flutter_log_file.dart';
@@ -25,6 +26,34 @@ final class MemorySink implements LogSink {
 
   @override
   Future<void> close() async => closes += 1;
+}
+
+final class LargeApplicationObject {
+  LargeApplicationObject(this.values);
+
+  final List<int> values;
+
+  @override
+  String toString() => 'large-object';
+}
+
+final class BlockingSink implements LogSink {
+  final started = Completer<void>();
+  final gate = Completer<void>();
+
+  @override
+  Future<void> write(LogEntry entry) async {
+    if (!started.isCompleted) {
+      started.complete();
+      await gate.future;
+    }
+  }
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {}
 }
 
 void main() {
@@ -105,5 +134,70 @@ void main() {
     await controller.close();
 
     expect(sink.closes, 1);
+  });
+
+  test('snapshots application objects before enqueueing', () async {
+    final sink = MemorySink();
+    final controller = LogController(
+      config: LogConfig(flushInterval: Duration.zero),
+      sinks: [sink],
+      sessionId: 'TEST',
+    );
+    await controller.start();
+    final object = LargeApplicationObject(List<int>.filled(100000, 7));
+    final nestedValues = <int>[1, 2, 3];
+    final fields = <String, Object?>{'values': nestedValues};
+
+    controller.log(
+      LogLevel.info,
+      object,
+      fields: fields,
+      error: StateError('failed'),
+      stackTrace: StackTrace.fromString('frame-1\nframe-2'),
+      callerStack: StackTrace.current,
+    );
+    nestedValues.add(4);
+    fields['later'] = true;
+    await controller.flush();
+
+    final entry = sink.entries.last;
+    expect(entry.message, 'large-object');
+    expect(identical(entry.message, object), isFalse);
+    expect(entry.fields, {
+      'values': [1, 2, 3],
+    });
+    expect(entry.error, 'Bad state: failed');
+    expect(entry.stackTrace.toString(), 'frame-1\nframe-2');
+    expect(entry.estimatedBytes, greaterThan(0));
+    await controller.close();
+  });
+
+  test('queue byte capacity prevents retained log growth', () async {
+    final sink = BlockingSink();
+    final controller = LogController(
+      config: LogConfig(
+        queueCapacity: 1000,
+        queueByteCapacity: 1024,
+        maxEntryBytes: 512,
+        flushInterval: Duration.zero,
+      ),
+      sinks: [sink],
+      sessionId: 'TEST',
+    );
+    await controller.start();
+    await sink.started.future;
+
+    for (var index = 0; index < 100; index += 1) {
+      controller.log(
+        LogLevel.info,
+        'x' * 400,
+        callerStack: StackTrace.current,
+      );
+    }
+
+    expect(controller.droppedCount, greaterThan(0));
+    sink.gate.complete();
+    await controller.flush();
+    await controller.close();
   });
 }

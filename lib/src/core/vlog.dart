@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
@@ -19,8 +20,14 @@ import 'log_controller.dart';
 /// Static application-facing entry point for console and file logs.
 abstract final class VLog {
   static const int _preInitCapacity = 1000;
+  static const int _preInitByteCapacity = 2 * 1024 * 1024;
+  static const int _preInitMaxEntryBytes = 256 * 1024;
   static final Queue<_PendingLog> _preInit = Queue<_PendingLog>();
   static final ObjectEncoderRegistry _registry = ObjectEncoderRegistry();
+  static final MessageSerializer _preInitSerializer = MessageSerializer(
+    registry: _registry,
+  );
+  static int _preInitBytes = 0;
 
   static Future<void> _lifecycle = Future<void>.value();
   static LogController? _controller;
@@ -176,6 +183,7 @@ abstract final class VLog {
         _fileManager = null;
         _config = null;
         _preInit.clear();
+        _preInitBytes = 0;
         await controller?.close();
       });
 
@@ -252,6 +260,7 @@ abstract final class VLog {
 
     final buffered = List<_PendingLog>.of(_preInit);
     _preInit.clear();
+    _preInitBytes = 0;
     for (final pending in buffered) {
       controller.log(
         pending.level,
@@ -303,20 +312,142 @@ abstract final class VLog {
       );
       return;
     }
-    if (_preInit.length >= _preInitCapacity) {
-      _preInit.removeFirst();
-    }
-    _preInit.addLast(
-      _PendingLog(
-        level: level,
-        message: message,
-        tag: tag,
-        error: error,
-        stackTrace: stackTrace,
-        fields: Map.unmodifiable(fields),
-        callerStack: callerStack,
+    final messageSnapshot = _snapshotPreInitValue(message);
+    final fieldsSnapshot = _snapshotPreInitFields(fields);
+    final errorSnapshot =
+        error == null ? null : _snapshotPreInitText(error.toString());
+    final stackSnapshot = stackTrace == null
+        ? null
+        : StackTrace.fromString(_snapshotPreInitText(stackTrace.toString()));
+    final callerSnapshot = StackTrace.fromString(
+      _snapshotPreInitText(callerStack.toString()),
+    );
+    final tagSnapshot = tag == null ? null : _snapshotPreInitText(tag);
+    final pending = _PendingLog(
+      level: level,
+      message: messageSnapshot,
+      tag: tagSnapshot,
+      error: errorSnapshot,
+      stackTrace: stackSnapshot,
+      fields: fieldsSnapshot,
+      callerStack: callerSnapshot,
+      estimatedBytes: _estimatePreInitBytes(
+        messageSnapshot,
+        fieldsSnapshot,
+        tagSnapshot,
+        errorSnapshot,
+        stackSnapshot,
+        callerSnapshot,
       ),
     );
+    while (_preInit.isNotEmpty &&
+        (_preInit.length >= _preInitCapacity ||
+            _preInitBytes + pending.estimatedBytes > _preInitByteCapacity)) {
+      _preInitBytes -= _preInit.removeFirst().estimatedBytes;
+    }
+    if (pending.estimatedBytes <= _preInitByteCapacity) {
+      _preInit.addLast(pending);
+      _preInitBytes += pending.estimatedBytes;
+    }
+  }
+
+  static Object? _snapshotPreInitValue(Object? value) {
+    final serialized = _preInitSerializer.serialize(value);
+    final rendered = serialized.render();
+    final bytes = utf8.encode(rendered);
+    if (bytes.length <= _preInitMaxEntryBytes) {
+      return serialized.value;
+    }
+    return _truncatePreInit(rendered, bytes);
+  }
+
+  static Map<String, Object?> _snapshotPreInitFields(
+    Map<String, Object?> fields,
+  ) {
+    if (fields.isEmpty) return const {};
+    final serialized = _preInitSerializer.serialize(fields);
+    final rendered = serialized.render();
+    final bytes = utf8.encode(rendered);
+    final value = serialized.value;
+    if (bytes.length <= _preInitMaxEntryBytes && value is Map) {
+      return Map.unmodifiable(value.cast<String, Object?>());
+    }
+    return Map.unmodifiable({
+      '_truncated': 'fields truncated from ${bytes.length}B',
+    });
+  }
+
+  static String _snapshotPreInitText(String value) {
+    var used = 0;
+    var fits = true;
+    for (final rune in value.runes) {
+      used += _runeUtf8Width(rune);
+      if (used > _preInitMaxEntryBytes) {
+        fits = false;
+        break;
+      }
+    }
+    if (fits) return value;
+
+    final marker = '…[truncated:${value.length} chars]';
+    final budget = _preInitMaxEntryBytes - utf8.encode(marker).length;
+    final buffer = StringBuffer();
+    used = 0;
+    for (final rune in value.runes) {
+      final width = _runeUtf8Width(rune);
+      if (used + width > budget) break;
+      buffer.writeCharCode(rune);
+      used += width;
+    }
+    return '$buffer$marker';
+  }
+
+  static int _runeUtf8Width(int rune) {
+    if (rune <= 0x7F) return 1;
+    if (rune <= 0x7FF) return 2;
+    if (rune <= 0xFFFF) return 3;
+    return 4;
+  }
+
+  static String _truncatePreInit(String value, List<int> bytes) {
+    var marker = '…[truncated:${bytes.length}B]';
+    var markerBytes = utf8.encode(marker);
+    if (markerBytes.length >= _preInitMaxEntryBytes) {
+      marker = '[truncated]';
+      markerBytes = utf8.encode(marker);
+    }
+    var end = _preInitMaxEntryBytes - markerBytes.length;
+    var prefix = '';
+    while (end >= 0) {
+      try {
+        prefix = utf8.decode(bytes.sublist(0, end));
+        break;
+      } on FormatException {
+        end -= 1;
+      }
+    }
+    return '$prefix$marker';
+  }
+
+  static int _estimatePreInitBytes(
+    Object? message,
+    Map<String, Object?> fields,
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+    StackTrace callerStack,
+  ) {
+    var bytes = 128;
+    bytes += utf8.encode(_preInitSerializer.serialize(message).render()).length;
+    if (fields.isNotEmpty) {
+      bytes +=
+          utf8.encode(_preInitSerializer.serialize(fields).render()).length;
+    }
+    if (tag != null) bytes += utf8.encode(tag).length;
+    if (error != null) bytes += utf8.encode(error.toString()).length;
+    if (stackTrace != null) bytes += utf8.encode(stackTrace.toString()).length;
+    bytes += utf8.encode(callerStack.toString()).length;
+    return bytes > 0 ? bytes : 1;
   }
 
   static Future<void> _scheduleLifecycle(
@@ -344,6 +475,7 @@ final class _PendingLog {
     required this.stackTrace,
     required this.fields,
     required this.callerStack,
+    required this.estimatedBytes,
   });
 
   final LogLevel level;
@@ -353,4 +485,5 @@ final class _PendingLog {
   final StackTrace? stackTrace;
   final Map<String, Object?> fields;
   final StackTrace callerStack;
+  final int estimatedBytes;
 }

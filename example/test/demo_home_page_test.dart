@@ -59,20 +59,24 @@ void main() {
     await tester.pumpWidget(testApp());
 
     expect(find.text('VLog Playground'), findsOneWidget);
-    expect(find.text('运行状态'), findsOneWidget);
-    expect(find.text('输出配置'), findsOneWidget);
-    expect(find.text('日志实验台'), findsOneWidget);
+    expect(find.text('Runtime status'), findsOneWidget);
+    expect(find.text('Output configuration'), findsOneWidget);
+    expect(find.text('Log playground'), findsOneWidget);
     expect(find.byKey(const Key('message-field')), findsOneWidget);
     expect(find.byKey(const Key('tag-field')), findsOneWidget);
     expect(find.byKey(const Key('open-viewer')), findsOneWidget);
   });
 
   testWidgets('writes text, JSON, object, and error samples', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(testApp());
 
     await tester.enterText(
       find.byKey(const Key('message-field')),
-      '来自 Widget Test 的消息',
+      'Message from Widget Test',
     );
     await tester.enterText(find.byKey(const Key('tag-field')), 'Widget');
     await tapVisible(tester, find.byKey(const Key('log-info')));
@@ -86,7 +90,7 @@ void main() {
       expect(files, isNotEmpty);
       return File(files.first.path).readAsString();
     });
-    expect(contents, contains('来自 Widget Test 的消息'));
+    expect(contents, contains('Message from Widget Test'));
     expect(contents, contains('Widget'));
     expect(contents, contains('Ada'));
     expect(contents, contains('ORDER-2026-001'));
@@ -113,7 +117,10 @@ void main() {
     expect(appliedConfig?.filePrefix, 'experience_log');
     expect(appliedConfig?.prettyJson, isTrue);
     expect(appliedConfig?.directoryPath, tempDirectory.path);
-    expect(find.text('配置已应用，并创建了新的 VLog session'), findsOneWidget);
+    expect(
+      find.text('Configuration applied. A new VLog session was created.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('opens the package log viewer', (tester) async {
@@ -124,7 +131,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('VLog 日志'), findsOneWidget);
+    expect(find.text('VLog Logs'), findsOneWidget);
     expect(find.byType(VLogViewerPage), findsOneWidget);
   });
 }

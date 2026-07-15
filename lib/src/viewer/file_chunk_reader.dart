@@ -47,17 +47,29 @@ final class FileChunkReader {
   final int chunkSizeBytes;
   final int maximumLineBytes;
 
-  Future<LogFileChunk> readTail({required int maxLines}) async {
+  Future<LogFileChunk> readTail({
+    required int maxLines,
+    int? maximumBytes,
+  }) async {
+    if (maxLines <= 0) {
+      throw ArgumentError.value(maxLines, 'maxLines', 'must be > 0');
+    }
+    if (maximumBytes != null && maximumBytes <= 0) {
+      throw ArgumentError.value(maximumBytes, 'maximumBytes', 'must be > 0');
+    }
     final file = File(filePath);
     final length = await file.length();
     if (length == 0) {
       return _empty(0);
     }
     final start = await _tailStart(length, maxLines);
-    var lines = await _readAligned(start, length);
-    if (lines.length > maxLines) {
-      lines = lines.sublist(lines.length - maxLines);
-    }
+    final lines = await _readAligned(
+      start,
+      length,
+      maximumLines: maxLines,
+      maximumBytes: maximumBytes,
+      keepTail: true,
+    );
     final first = lines.isEmpty ? length : lines.first.startOffset;
     return LogFileChunk(
       lines: lines,
@@ -136,13 +148,32 @@ final class FileChunkReader {
     );
   }
 
-  Future<List<LogFileLine>> _readAligned(int start, int end) async {
+  Future<List<LogFileLine>> _readAligned(
+    int start,
+    int end, {
+    int? maximumLines,
+    int? maximumBytes,
+    bool keepTail = false,
+  }) async {
     if (end <= start) {
       return const [];
     }
     final file = await File(filePath).open();
     try {
       final result = <LogFileLine>[];
+      var retainedBytes = 0;
+
+      void retain(LogFileLine line) {
+        result.add(line);
+        retainedBytes += line.byteLength;
+        if (!keepTail) return;
+        while (result.length > 1 &&
+            ((maximumLines != null && result.length > maximumLines) ||
+                (maximumBytes != null && retainedBytes > maximumBytes))) {
+          retainedBytes -= result.removeAt(0).byteLength;
+        }
+      }
+
       final fileLength = await file.length();
       var position = start;
       var lineStart = start;
@@ -163,7 +194,7 @@ final class FileChunkReader {
             continue;
           }
           if (byte == 0x0A) {
-            result.add(
+            retain(
               LogFileLine(
                 text: _decodeLine(lineBytes, lineTruncated),
                 startOffset: lineStart,
@@ -183,7 +214,7 @@ final class FileChunkReader {
         if (bytes.isEmpty) break;
       }
       if (aligned && lineStart < end && end == fileLength) {
-        result.add(
+        retain(
           LogFileLine(
             text: _decodeLine(lineBytes, lineTruncated),
             startOffset: lineStart,
@@ -277,9 +308,9 @@ final class FileChunkReader {
   }
 
   String _decodeLine(List<int> bytes, bool truncated) {
-    var value = List<int>.of(bytes);
-    if (value.isNotEmpty && value.last == 0x0D) {
-      value = value.sublist(0, value.length - 1);
+    var value = bytes;
+    if (bytes.isNotEmpty && bytes.last == 0x0D) {
+      value = bytes.sublist(0, bytes.length - 1);
     }
     final text = utf8.decode(value, allowMalformed: true);
     return truncated ? '$text… [line truncated]' : text;

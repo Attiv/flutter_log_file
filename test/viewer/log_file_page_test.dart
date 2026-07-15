@@ -87,7 +87,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('1 个结果'), findsOneWidget);
+    expect(find.text('1 result'), findsOneWidget);
     await tester.tap(find.byKey(const Key('search-result-0')));
     await tester.runAsync(() async {
       for (var attempt = 0; attempt < 100; attempt += 1) {
@@ -120,7 +120,7 @@ void main() {
     await tester.pump();
 
     expect(controller.isFollowing, isFalse);
-    expect(find.text('实时追踪已暂停'), findsOneWidget);
+    expect(find.text('Live follow paused'), findsOneWidget);
     await controller.close();
   });
 }

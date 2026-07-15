@@ -11,6 +11,8 @@ final class DemoApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'VLog Playground',
+      locale: const Locale('en'),
+      supportedLocales: const [Locale('en')],
       themeMode: ThemeMode.system,
       theme: _theme(Brightness.light, seed),
       darkTheme: _theme(Brightness.dark, seed),

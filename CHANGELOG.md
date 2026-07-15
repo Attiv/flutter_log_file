@@ -4,3 +4,6 @@
 * Add Android and Windows App Support directory resolution.
 * Add configurable JSON/object formatting, optional error capture and opt-in redaction.
 * Add bounded-memory lazy viewer pages and isolate-backed search.
+* Use English for all bundled runtime UI and demo messages.
+* Bound queued log memory by retained bytes and snapshot application values.
+* Bound tail decoding during large-file viewing and reduce search allocation churn.

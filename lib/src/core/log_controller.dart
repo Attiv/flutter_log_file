@@ -33,11 +33,15 @@ final class LogController {
       registry: this.registry,
       redactedKeys: config.redactedKeys,
       redactors: config.redactors,
+      maximumNodes: max(64, min(4096, config.maxEntryBytes ~/ 8)),
+      maximumCharacters: config.maxEntryBytes,
     );
     _queue = SerialLogQueue<LogEntry>(
       capacity: config.queueCapacity,
+      maximumWeight: config.queueByteCapacity,
       overflowPolicy: config.overflowPolicy,
       priorityOf: (entry) => entry.level.index,
+      weightOf: _entryWeight,
       handler: _process,
       onError: _internalErrorReporter,
     );
@@ -95,17 +99,32 @@ final class LogController {
     if (_closed || !level.isAtLeast(config.minimumLevel)) {
       return false;
     }
+    final messageSnapshot = _snapshotMessage(message);
+    final fieldsSnapshot = _snapshotFields(fields);
+    final errorSnapshot =
+        error == null ? null : _snapshotText(error.toString());
+    final stackSnapshot = stackTrace == null
+        ? null
+        : StackTrace.fromString(_snapshotText(stackTrace.toString()));
+    final tagSnapshot = tag == null ? null : _snapshotText(tag);
     final entry = LogEntry(
       timestamp: _clock(),
       level: level,
-      message: _truncateMessage(message),
-      tag: tag,
-      error: error,
-      stackTrace: stackTrace,
-      fields: Map.unmodifiable(fields),
+      message: messageSnapshot,
+      tag: tagSnapshot,
+      error: errorSnapshot,
+      stackTrace: stackSnapshot,
+      fields: fieldsSnapshot,
       caller: _callerResolver.resolve(callerStack),
       sessionId: sessionId,
       sequence: ++_sequence,
+      estimatedBytes: _estimateEntryBytes(
+        messageSnapshot,
+        fieldsSnapshot,
+        tagSnapshot,
+        errorSnapshot,
+        stackSnapshot,
+      ),
     );
     return _queue.enqueue(entry);
   }
@@ -163,12 +182,69 @@ final class LogController {
     }
   }
 
-  Object? _truncateMessage(Object? message) {
-    final rendered = _serializer.serialize(message).render();
+  Object? _snapshotMessage(Object? message) {
+    final serialized = _serializer.serialize(message);
+    final rendered = serialized.render();
     final bytes = utf8.encode(rendered);
     if (bytes.length <= config.maxEntryBytes) {
-      return message;
+      return serialized.value;
     }
+    return _truncateRendered(rendered, bytes);
+  }
+
+  Map<String, Object?> _snapshotFields(Map<String, Object?> fields) {
+    if (fields.isEmpty) {
+      return const {};
+    }
+    final serialized = _serializer.serialize(fields);
+    final rendered = serialized.render();
+    final bytes = utf8.encode(rendered);
+    final value = serialized.value;
+    if (bytes.length <= config.maxEntryBytes && value is Map) {
+      return Map.unmodifiable(value.cast<String, Object?>());
+    }
+    return Map.unmodifiable({
+      '_truncated': 'fields truncated from ${bytes.length}B',
+    });
+  }
+
+  String _snapshotText(String value) {
+    return _boundTextUtf8(value, config.maxEntryBytes);
+  }
+
+  String _boundTextUtf8(String value, int maximumBytes) {
+    var used = 0;
+    var fits = true;
+    for (final rune in value.runes) {
+      used += _runeUtf8Width(rune);
+      if (used > maximumBytes) {
+        fits = false;
+        break;
+      }
+    }
+    if (fits) return value;
+
+    final marker = '…[truncated:${value.length} chars]';
+    final budget = max(0, maximumBytes - utf8.encode(marker).length);
+    final buffer = StringBuffer();
+    used = 0;
+    for (final rune in value.runes) {
+      final width = _runeUtf8Width(rune);
+      if (used + width > budget) break;
+      buffer.writeCharCode(rune);
+      used += width;
+    }
+    return '$buffer$marker';
+  }
+
+  int _runeUtf8Width(int rune) {
+    if (rune <= 0x7F) return 1;
+    if (rune <= 0x7FF) return 2;
+    if (rune <= 0xFFFF) return 3;
+    return 4;
+  }
+
+  String _truncateRendered(String rendered, List<int> bytes) {
     var marker = '…[truncated:${bytes.length}B]';
     var markerBytes = utf8.encode(marker);
     if (markerBytes.length >= config.maxEntryBytes) {
@@ -187,6 +263,36 @@ final class LogController {
       }
     }
     return '$prefix$marker';
+  }
+
+  int _entryWeight(LogEntry entry) => entry.estimatedBytes > 0
+      ? entry.estimatedBytes
+      : _estimateEntryBytes(
+          entry.message,
+          entry.fields,
+          entry.tag,
+          entry.error,
+          entry.stackTrace,
+        );
+
+  int _estimateEntryBytes(
+    Object? message,
+    Map<String, Object?> fields,
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  ) {
+    var bytes = 128;
+    bytes += utf8.encode(_serializer.serialize(message).render()).length;
+    if (fields.isNotEmpty) {
+      bytes += utf8.encode(_serializer.serialize(fields).render()).length;
+    }
+    if (tag != null) bytes += utf8.encode(tag).length;
+    if (error != null) bytes += utf8.encode(error.toString()).length;
+    if (stackTrace != null) {
+      bytes += utf8.encode(stackTrace.toString()).length;
+    }
+    return max(1, bytes);
   }
 
   static String _newSessionId() => Random.secure()

@@ -13,11 +13,14 @@ English | [简体中文](README_CN.md)
 - App Support private directories by default on Android and Windows, with no public storage permission required;
 - Default filename `app_log_yyyy-MM-dd.txt`, with configurable prefix, extension, and daily splitting;
 - Configurable retention and rotation, defaulting to 30 days and 50 MB per file;
+- Count- and byte-bounded asynchronous queue, defaulting to 10,000 entries and 8 MB retained data;
 - Map/List, `toJson()`, and custom object encoder support;
 - Independently configurable compact or pretty JSON per sink, compact by default;
 - Optional Flutter and platform error capture without replacing existing handlers by default;
 - `VLogViewerPage` / `VLogFilePage` with lazy loading, live tailing, search, regex, level/tag/date filters, copy, share, and delete actions;
 - Isolate-based search and a bounded byte window in the viewer, so the complete large file is never loaded into memory.
+
+See the detailed [memory audit](docs/memory-audit.md) for queue, viewer, search, and lifecycle bounds.
 
 ## Installation
 
@@ -199,7 +202,7 @@ await VLog.flush();
 await VLog.close();
 ```
 
-Log calls do not need to be awaited. The queue is bounded and prioritizes higher-level entries when full by default. `error` and `fatal` entries trigger sink flushing.
+Log calls do not need to be awaited. The queue is bounded by both `queueCapacity` (10,000 entries by default) and `queueByteCapacity` (8 MB by default), and prioritizes higher-level entries when full. Messages, fields, errors, and stack traces are normalized into bounded snapshots before entering the queue, so application object graphs are not retained by asynchronous logging. `error` and `fatal` entries trigger sink flushing.
 
 ## Limitations
 

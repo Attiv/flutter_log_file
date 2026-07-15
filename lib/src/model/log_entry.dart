@@ -15,6 +15,7 @@ final class LogEntry {
     this.stackTrace,
     this.fields = const {},
     this.isInternal = false,
+    this.estimatedBytes = 0,
   });
 
   final DateTime timestamp;
@@ -28,4 +29,5 @@ final class LogEntry {
   final String sessionId;
   final int sequence;
   final bool isInternal;
+  final int estimatedBytes;
 }

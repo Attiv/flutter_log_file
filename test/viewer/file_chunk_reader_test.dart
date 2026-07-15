@@ -105,4 +105,27 @@ void main() {
     final next = await reader.readAfter(first.lines.first.endOffset);
     expect(next.lines.single.text, 'last');
   });
+
+  test('bounds the retained tail by bytes as well as line count', () async {
+    await file.writeAsString(
+      '${List.generate(100, (index) => '${'x' * 128}-$index').join('\n')}\n',
+    );
+    final reader = FileChunkReader(
+      file.path,
+      chunkSizeBytes: 256,
+      maximumLineBytes: 1024,
+    );
+
+    final tail = await reader.readTail(
+      maxLines: 100,
+      maximumBytes: 1024,
+    );
+
+    expect(
+      tail.lines.fold<int>(0, (sum, line) => sum + line.byteLength),
+      lessThanOrEqualTo(1024),
+    );
+    expect(tail.lines.last.text, endsWith('-99'));
+    expect(tail.hasMoreBefore, isTrue);
+  });
 }
