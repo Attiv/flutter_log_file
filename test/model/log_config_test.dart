@@ -11,6 +11,7 @@ void main() {
       expect(config.showTag, isTrue);
       expect(config.prettyJson, isFalse);
       expect(config.filePrefix, 'app_log');
+      expect(config.fileNamePattern, '{prefix}_{date}');
       expect(config.fileExtension, 'txt');
       expect(config.splitByDay, isTrue);
       expect(config.retentionDays, 30);
@@ -40,6 +41,40 @@ void main() {
       expect(() => LogConfig(maxFileSizeBytes: 0), throwsArgumentError);
       expect(() => LogConfig(queueCapacity: 0), throwsArgumentError);
       expect(() => LogConfig(queueByteCapacity: 0), throwsArgumentError);
+    });
+
+    test('validates filename templates against daily splitting', () {
+      expect(
+        LogConfig(splitByDay: false).fileNamePattern,
+        '{prefix}',
+      );
+      expect(
+        () => LogConfig(fileNamePattern: ''),
+        throwsArgumentError,
+      );
+      expect(
+        () => LogConfig(fileNamePattern: 'logs/{date}'),
+        throwsArgumentError,
+      );
+      expect(
+        () => LogConfig(fileNamePattern: '{prefix}'),
+        throwsArgumentError,
+      );
+      expect(
+        () => LogConfig(fileNamePattern: '{date}-{date}'),
+        throwsArgumentError,
+      );
+      expect(
+        () => LogConfig(
+          splitByDay: false,
+          fileNamePattern: '{prefix}_{date}',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => LogConfig(fileNamePattern: '{date}-{unknown}'),
+        throwsArgumentError,
+      );
     });
 
     test('uses empty sensitive-data configuration by default', () {

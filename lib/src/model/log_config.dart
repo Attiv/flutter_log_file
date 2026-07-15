@@ -31,6 +31,7 @@ final class LogConfig {
     this.directoryPath,
     this.directoryResolver,
     this.filePrefix = 'app_log',
+    String? fileNamePattern,
     this.fileExtension = 'txt',
     this.splitByDay = true,
     this.fileDatePattern = 'yyyy-MM-dd',
@@ -48,7 +49,9 @@ final class LogConfig {
     this.capturePlatformErrors = false,
     Set<String> redactedKeys = const <String>{},
     List<LogRedactor> redactors = const <LogRedactor>[],
-  })  : redactedKeys = UnmodifiableSetView<String>(
+  })  : fileNamePattern =
+            fileNamePattern ?? (splitByDay ? '{prefix}_{date}' : '{prefix}'),
+        redactedKeys = UnmodifiableSetView<String>(
           redactedKeys.map((key) => key.toLowerCase()).toSet(),
         ),
         redactors = UnmodifiableListView<LogRedactor>(redactors) {
@@ -85,6 +88,28 @@ final class LogConfig {
     if (filePrefix.trim().isEmpty) {
       throw ArgumentError.value(filePrefix, 'filePrefix', 'must not be empty');
     }
+    final patternWithoutTokens = this
+        .fileNamePattern
+        .replaceAll('{prefix}', '')
+        .replaceAll('{date}', '');
+    final dateTokenCount = RegExp(
+      r'\{date\}',
+    ).allMatches(this.fileNamePattern).length;
+    if (this.fileNamePattern.trim().isEmpty ||
+        this.fileNamePattern.contains('/') ||
+        this.fileNamePattern.contains(r'\') ||
+        patternWithoutTokens.contains('{') ||
+        patternWithoutTokens.contains('}') ||
+        (splitByDay && dateTokenCount != 1) ||
+        (!splitByDay && dateTokenCount != 0)) {
+      throw ArgumentError.value(
+        this.fileNamePattern,
+        'fileNamePattern',
+        splitByDay
+            ? 'must be a filename stem containing exactly one {date} token'
+            : 'must be a filename stem without a {date} token',
+      );
+    }
     if (fileExtension.trim().isEmpty) {
       throw ArgumentError.value(
         fileExtension,
@@ -116,6 +141,7 @@ final class LogConfig {
   final String? directoryPath;
   final LogDirectoryResolver? directoryResolver;
   final String filePrefix;
+  final String fileNamePattern;
   final String fileExtension;
   final bool splitByDay;
   final String fileDatePattern;

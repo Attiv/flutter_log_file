@@ -51,4 +51,22 @@ void main() {
     expect(parsed?.date, DateTime(2026, 7, 15));
     expect(parsed?.part, 12);
   });
+
+  test('supports the legacy Dookr filename and rotated parts', () {
+    final policy = FileNamePolicy(
+      LogConfig(
+        fileNamePattern: '{date}-logFile',
+        fileDatePattern: 'yyyyMMdd',
+      ),
+    );
+
+    expect(policy.fileName(day), '20260715-logFile.txt');
+    expect(policy.fileName(day, part: 1), '20260715-logFile.1.txt');
+
+    final parsed = policy.parse('20260715-logFile.12.txt');
+    expect(parsed?.date, DateTime(2026, 7, 15));
+    expect(parsed?.part, 12);
+    expect(policy.matches('20260715-other.txt'), isFalse);
+    expect(policy.matches('20260231-logFile.txt'), isFalse);
+  });
 }
