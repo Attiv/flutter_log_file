@@ -1,1 +1,9 @@
 .worktrees/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+*.iml
+.packages
+build/
+pubspec.lock
