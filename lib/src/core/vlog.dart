@@ -193,6 +193,11 @@ abstract final class VLog {
     await _fileManager?.clear();
   }
 
+  static Future<void> deleteLogFiles(Iterable<String> filePaths) async {
+    await flush();
+    await _fileManager?.deleteFiles(filePaths);
+  }
+
   static Future<void> cleanupLogs() async {
     await flush();
     await _fileManager?.cleanup();

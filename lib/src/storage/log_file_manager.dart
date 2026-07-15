@@ -84,6 +84,34 @@ final class LogFileManager {
         _length = 0;
       });
 
+  Future<void> deleteFiles(Iterable<String> filePaths) => _serialized(() async {
+        final rootPath = path.normalize(path.absolute(directory.path));
+        final selected = filePaths.map((value) => path.normalize(
+              path.absolute(value),
+            ));
+        for (final selectedPath in selected) {
+          if (path.dirname(selectedPath) != rootPath ||
+              !_namePolicy.matches(path.basename(selectedPath))) {
+            continue;
+          }
+          if (selectedPath == _activeFile?.path) {
+            await _closeHandle();
+            _activeFile = null;
+            _activeDateName = null;
+            _part = 0;
+            _length = 0;
+          }
+          final file = File(selectedPath);
+          try {
+            if (await file.exists()) {
+              await file.delete();
+            }
+          } on FileSystemException {
+            // Continue deleting the other explicitly selected files.
+          }
+        }
+      });
+
   Future<void> close() {
     if (_closed) {
       return _tail;

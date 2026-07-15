@@ -174,4 +174,30 @@ void main() {
         await File((await VLog.getLogFiles()).single.path).readAsString();
     expect(content, contains('zone failed'));
   });
+
+  test('deletes only selected managed file paths', () async {
+    await VLog.init(
+      LogConfig(
+        directoryPath: root.path,
+        consoleEnabled: false,
+        maxFileSizeBytes: 120,
+        flushInterval: Duration.zero,
+      ),
+    );
+    for (var index = 0; index < 10; index += 1) {
+      VLog.i('entry-$index-${'x' * 40}');
+    }
+    await VLog.flush();
+    final before = await VLog.getLogFiles();
+    expect(before.length, greaterThan(1));
+
+    await VLog.deleteLogFiles([
+      before.last.path,
+      '${root.path}/unmanaged.txt',
+    ]);
+
+    final after = await VLog.getLogFiles();
+    expect(after.length, before.length - 1);
+    expect(after.map((file) => file.path), isNot(contains(before.last.path)));
+  });
 }

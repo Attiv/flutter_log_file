@@ -99,4 +99,18 @@ void main() {
     await controller.close();
     await events.close();
   });
+
+  test('jumps directly to the start and end windows', () async {
+    final controller = LogFileController(
+      filePath: file.path,
+      config: const VLogViewerConfig(initialTailLines: 3),
+    );
+    await controller.open();
+
+    await controller.jumpToStart();
+    expect(controller.lines.first.text, 'line-0');
+    await controller.jumpToEnd();
+    expect(controller.lines.last.text, 'line-19');
+    await controller.close();
+  });
 }

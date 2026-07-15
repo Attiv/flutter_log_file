@@ -83,6 +83,12 @@ final class LogFileController extends ChangeNotifier {
         _replace(await _reader.readAround(offset));
       });
 
+  Future<void> jumpToStart() => _guard(() async {
+        _replace(await _reader.readAfter(0));
+      });
+
+  Future<void> jumpToEnd() => refreshTail();
+
   Future<void> setFollow(bool value) async {
     if (_follow == value || _closed) {
       return;
