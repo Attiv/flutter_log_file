@@ -1,31 +1,33 @@
 # flutter_log_file
 
-`flutter_log_file` 是一个面向 Android 和 Windows 的 Flutter 日志 Package，入口名称为 **`VLog`**。它同时支持终端输出、App 私有目录文件、跨日/按大小轮转、JSON/对象格式化、异常捕获和大文件懒加载查看。
+English | [简体中文](README_CN.md)
 
-## 功能
+`flutter_log_file` is a Flutter logging package for Android and Windows. Its public entry point is **`VLog`**. It supports terminal output, files in the app-private directory, daily and size-based rotation, JSON/object formatting, error capture, and lazy loading of large log files.
 
-- `VLog.v/d/i/w/e/f` 六级日志 API，Tag 可传可不传；
-- 控制台和文件 Sink 可分别启停、过滤等级和格式化；
-- 时间、调用文件名、调用行号、等级始终可定位；
-- 控制台 ANSI 颜色可配置，文件不会写入颜色控制字符；
-- Android/Windows 默认使用 App Support 私有目录，无公共存储权限；
-- 默认 `app_log_yyyy-MM-dd.txt`，支持自定义前缀、扩展名和按天开文件；
-- 默认保留 30 天、单文件 50 MB，均可配置；
-- Map/List、`toJson()` 和自定义对象编码器；
-- JSON 紧凑/美化可分别配置，默认不美化；
-- 可选接管 Flutter 和平台异常，默认不接管原处理器；
-- `VLogViewerPage` / `VLogFilePage` 支持懒加载、实时追踪、搜索、正则、等级/Tag/日期过滤、复制、分享和删除；
-- 搜索在 Isolate 中执行，查看页只保留有界字节窗口，不把完整大文件载入内存。
+## Features
 
-## 安装
+- Six log levels through `VLog.v/d/i/w/e/f`, with an optional tag;
+- Independently configurable console and file sinks, level filters, and formatting;
+- Timestamp, source filename, source line number, and level for quick location;
+- Configurable ANSI colors in the console without writing control characters to files;
+- App Support private directories by default on Android and Windows, with no public storage permission required;
+- Default filename `app_log_yyyy-MM-dd.txt`, with configurable prefix, extension, and daily splitting;
+- Configurable retention and rotation, defaulting to 30 days and 50 MB per file;
+- Map/List, `toJson()`, and custom object encoder support;
+- Independently configurable compact or pretty JSON per sink, compact by default;
+- Optional Flutter and platform error capture without replacing existing handlers by default;
+- `VLogViewerPage` / `VLogFilePage` with lazy loading, live tailing, search, regex, level/tag/date filters, copy, share, and delete actions;
+- Isolate-based search and a bounded byte window in the viewer, so the complete large file is never loaded into memory.
+
+## Installation
 
 ```bash
 flutter pub add flutter_log_file
 ```
 
-当前 Package 不需要网络权限，也不会自动上传日志。
+The package does not require network permission and never uploads logs automatically.
 
-## 基本使用
+## Basic Usage
 
 ```dart
 import 'package:flutter_log_file/flutter_log_file.dart';
@@ -46,11 +48,11 @@ Future<void> main() async {
     ),
   );
 
-  VLog.i('应用启动');
+  VLog.i('Application started');
   VLog.d({'retry': 2}, tag: 'Network');
-  VLog.w('缓存即将过期');
+  VLog.w('Cache is about to expire');
   VLog.e(
-    '请求失败',
+    'Request failed',
     tag: 'API',
     error: StateError('timeout'),
     stackTrace: StackTrace.current,
@@ -60,49 +62,49 @@ Future<void> main() async {
 }
 ```
 
-每次 `VLog.init()` 会生成一个 session。调用位置默认来自日志调用处，而不是 Package 内部栈帧。Release 模式下若平台没有提供源代码栈信息，调用位置会回退为 `unknown`。
+Each `VLog.init()` creates a session. The source location points to the log call site rather than an internal package frame. In release mode, it falls back to `unknown` if the platform does not provide source information in the stack trace.
 
-当日志内容是多行美化 JSON 时，每个物理行都会重复时间、等级、文件和行号前缀，方便在终端或文件中直接搜索定位。
+For multiline pretty-printed JSON, every physical line repeats the timestamp, level, filename, and line-number prefix so it remains easy to search in the terminal or log file.
 
-## 路径和文件轮转
+## Paths and File Rotation
 
-默认路径：
+Default paths:
 
-- Android：应用 Support 私有目录下的 `logs/`；
-- Windows：应用 Support 目录下的 `logs/`（通常位于 `%APPDATA%` 应用目录）。
+- Android: `logs/` under the app-private Support directory;
+- Windows: `logs/` under the App Support directory, usually inside the application's `%APPDATA%` directory.
 
-不需要申请公共存储权限。开发者可传入绝对路径或异步解析器：
+No public storage permission is required. You can provide an absolute path or an asynchronous resolver:
 
 ```dart
 LogConfig(
   directoryPath: '/custom/log/path',
-  // 或：directoryResolver: () async => await resolveDirectory(),
+  // Or: directoryResolver: () async => await resolveDirectory(),
 )
 ```
 
-默认文件名：
+Default filenames:
 
 ```text
 app_log_2026-07-15.txt
 app_log_2026-07-15.1.txt
 ```
 
-不按天生成时：
+Without daily splitting:
 
 ```dart
 LogConfig(splitByDay: false, filePrefix: 'device')
 // device.txt, device.1.txt, ...
 ```
 
-应用不重启跨过零点时，下一条日志会自动切换到新日期文件。`retentionDays: 0` 表示关闭自动过期清理；`maxFileSizeBytes` 控制同一天的分片大小。
+If the app remains running across midnight, the next log entry automatically switches to the new day's file. Set `retentionDays: 0` to disable automatic expiry cleanup. `maxFileSizeBytes` controls file segmentation within the same day.
 
-## JSON 和对象
+## JSON and Objects
 
 ```dart
 VLog.i({'user': 'Ada', 'roles': ['admin']});
 
 final order = Order(id: 'O-1');
-VLog.i(order); // 使用 toJson()，没有 toJson() 时回退到 toString()
+VLog.i(order); // Uses toJson(), then falls back to toString()
 
 VLog.registerEncoder<Order>((value) => {
   'id': value.id,
@@ -110,9 +112,9 @@ VLog.registerEncoder<Order>((value) => {
 });
 ```
 
-编码顺序为 primitive、Map/List、已注册编码器、`toJson()`、`toString()`。Dart/Flutter Release 没有可靠的任意对象运行时反射，因此业务对象应提供 `toJson()` 或注册编码器。
+The encoding order is primitive values, Map/List, registered encoders, `toJson()`, and finally `toString()`. Dart/Flutter release builds do not provide reliable runtime reflection for arbitrary objects, so application models should expose `toJson()` or register an encoder.
 
-紧凑/美化可以按输出端分别配置：
+Compact and pretty formatting can be configured independently for each sink:
 
 ```dart
 LogConfig(
@@ -122,9 +124,9 @@ LogConfig(
 )
 ```
 
-### 敏感数据
+### Sensitive Data
 
-脱敏默认完全关闭：`redactedKeys` 默认为空集合，`redactors` 默认为空列表。只有显式配置才处理：
+Redaction is completely disabled by default: `redactedKeys` is an empty set and `redactors` is an empty list. Data is processed only when explicitly configured:
 
 ```dart
 LogConfig(
@@ -138,9 +140,9 @@ LogConfig(
 )
 ```
 
-## 异常捕获
+## Error Capture
 
-默认不接管任何全局错误处理器。需要时显式打开：
+No global error handler is intercepted by default. Enable capture explicitly when needed:
 
 ```dart
 await VLog.init(
@@ -153,9 +155,9 @@ await VLog.init(
 VLog.runGuarded(() => runApp(const MyApp()));
 ```
 
-Package 会先记录错误，再调用原来的 Flutter/platform handler；记录失败不会吞掉原异常。
+The package records the error first and then invokes the original Flutter/platform handler. A logging failure never swallows the original error.
 
-## 集成日志查看页
+## Integrating the Log Viewer
 
 ```dart
 Navigator.of(context).push(
@@ -163,40 +165,40 @@ Navigator.of(context).push(
 );
 ```
 
-文件列表页支持：
+The file list page supports:
 
-- 按修改时间倒序查看文件、大小、活动状态；
-- 手动刷新、清理过期文件；
-- 长按多选后分享、删除；
-- 复制文件路径。
+- Files sorted by modification time, with size and active-state indicators;
+- Manual refresh and expired-file cleanup;
+- Long-press multi-selection for sharing and deletion;
+- Copying file paths.
 
-文件阅读页支持：
+The file reader page supports:
 
-- 从文件尾部开始读取，向上/向下按字节块加载；
-- `ListView.builder` 只构建可见行；默认约 4 MB 解码内存预算；
-- 实时追踪/暂停、字号、换行、跳到首尾；
-- 普通关键词、大小写、正则、等级、Tag、日期范围过滤；
-- Isolate 流式搜索、进度、取消、结果字节偏移跳转；
-- 复制当前行、前后文和移除日志前缀的纯 JSON/纯内容；
-- JSON 折叠和 Error/StackTrace 展开。
+- Initial reading from the end of the file, with byte-block loading in either direction;
+- `ListView.builder` rendering only visible lines, with a default decoded-memory budget of about 4 MB;
+- Live tail/pause, font-size and wrapping controls, and jump-to-start/end;
+- Plain-text, case-sensitive, regex, level, tag, and date-range filters;
+- Isolate-based streaming search with progress, cancellation, and byte-offset navigation;
+- Copying the current line, surrounding context, or plain JSON/content with the log prefix removed;
+- Collapsible JSON and expandable Error/StackTrace sections.
 
-## 生命周期
+## Lifecycle
 
 ```dart
 await VLog.flush();
 await VLog.close();
 ```
 
-日志调用本身不需要 `await`。队列有上限，默认在队列满时优先保留高等级日志；`error/fatal` 会触发 Sink 刷新。
+Log calls do not need to be awaited. The queue is bounded and prioritizes higher-level entries when full by default. `error` and `fatal` entries trigger sink flushing.
 
-## 限制
+## Limitations
 
-- 不支持多个进程同时写同一个日志文件；
-- 不使用 WebView，也不建立 SQLite 全量索引；
-- Release/AOT 若没有源映射，文件名/行号可能无法解析；
-- Windows 原生构建应在 Windows 主机上验证。本仓库本机检查覆盖 Windows 路径策略和纯 Dart/Widget 逻辑。
+- Multiple processes writing to the same log file are not supported;
+- The viewer does not use a WebView or build a complete SQLite index;
+- Filename and line-number resolution may be unavailable in release/AOT builds without source mapping;
+- Native Windows builds should be verified on a Windows host. Local repository checks cover Windows path policies and pure Dart/widget logic.
 
-## 本地开发
+## Local Development
 
 ```bash
 dart format --output=none --set-exit-if-changed lib test
@@ -204,5 +206,3 @@ flutter analyze
 flutter test
 flutter pub publish --dry-run
 ```
-
-开发验证不会自动安装或运行到连接的 Android 手机。
