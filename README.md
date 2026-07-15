@@ -27,6 +27,16 @@ flutter pub add flutter_log_file
 
 The package does not require network permission and never uploads logs automatically.
 
+## Demo App
+
+A complete Material 3 demo for Android and Windows is available in [`example/`](example/). It includes editable VLog configuration, all six log levels, JSON/object/error samples, burst generation, and direct access to the lazy log viewer.
+
+```bash
+cd example
+flutter pub get
+flutter run -d <device-id>
+```
+
 ## Basic Usage
 
 ```dart

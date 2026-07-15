@@ -27,6 +27,16 @@ flutter pub add flutter_log_file
 
 当前 Package 不需要网络权限，也不会自动上传日志。
 
+## 体验 Demo
+
+[`example/`](example/) 中提供了支持 Android 和 Windows 的完整 Material 3 Demo，包含可视化配置、六级日志、JSON/对象/异常示例、批量日志生成以及日志查看器入口。
+
+```bash
+cd example
+flutter pub get
+flutter run -d <device-id>
+```
+
 ## 基本使用
 
 ```dart
