@@ -102,6 +102,19 @@ app_log_2026-07-15.txt
 app_log_2026-07-15.1.txt
 ```
 
+Use `fileNamePattern` to preserve an existing filename convention. The pattern
+is a filename stem and supports `{prefix}` and `{date}`. Daily patterns must
+contain exactly one `{date}` token; non-daily patterns cannot contain it. Path
+separators and unknown tokens are rejected.
+
+```dart
+LogConfig(
+  fileNamePattern: '{date}-logFile',
+  fileDatePattern: 'yyyyMMdd',
+)
+// 20260715-logFile.txt, 20260715-logFile.1.txt, ...
+```
+
 Without daily splitting:
 
 ```dart

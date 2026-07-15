@@ -141,6 +141,8 @@ final class LogConfig {
   final String? directoryPath;
   final LogDirectoryResolver? directoryResolver;
   final String filePrefix;
+
+  /// Filename stem template using `{prefix}` and, for daily logs, `{date}`.
   final String fileNamePattern;
   final String fileExtension;
   final bool splitByDay;

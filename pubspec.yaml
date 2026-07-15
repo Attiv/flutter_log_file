@@ -1,6 +1,6 @@
 name: flutter_log_file
 description: Configurable console and rotating file logs with a lazy Flutter viewer.
-version: 0.1.0
+version: 0.1.1
 homepage: https://pub.dev/packages/flutter_log_file
 
 environment:

@@ -1,3 +1,8 @@
+## 0.1.1
+
+* Add validated filename stem templates with `{prefix}` and `{date}` tokens.
+* Support compact `yyyyMMdd` dates for legacy-compatible managed filenames.
+
 ## 0.1.0
 
 * Add the `VLog` console and rotating file logging API.

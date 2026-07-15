@@ -102,6 +102,18 @@ app_log_2026-07-15.txt
 app_log_2026-07-15.1.txt
 ```
 
+可以通过 `fileNamePattern` 兼容已有文件名规则。模板表示不含扩展名的文件名，
+支持 `{prefix}` 和 `{date}`。按天生成时必须且只能包含一个 `{date}`；不按天
+生成时不能包含 `{date}`。路径分隔符和未知占位符会被拒绝。
+
+```dart
+LogConfig(
+  fileNamePattern: '{date}-logFile',
+  fileDatePattern: 'yyyyMMdd',
+)
+// 20260715-logFile.txt, 20260715-logFile.1.txt, ...
+```
+
 不按天生成时：
 
 ```dart
