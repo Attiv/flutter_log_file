@@ -238,19 +238,28 @@ Future<void> _searchWorker(Map<String, Object?> request) async {
     file = await File(request['filePath'] as String).open();
     final totalBytes = await file.length();
     const chunkSize = 128 * 1024;
+    const maximumBufferedLineBytes = 1024 * 1024;
     var position = 0;
-    var carry = <int>[];
+    var lineStart = 0;
+    var lineBytes = <int>[];
+    var lineTruncated = false;
     var lineNumber = 0;
     var resultCount = 0;
     var truncated = false;
     final matcher = _WorkerMatcher(request);
 
-    Future<bool> processLine(List<int> bytes, int start, int end) async {
+    Future<bool> processLine(
+      List<int> bytes,
+      int start,
+      int end, {
+      bool wasTruncated = false,
+    }) async {
       lineNumber += 1;
       if (bytes.isNotEmpty && bytes.last == 0x0D) {
         bytes = bytes.sublist(0, bytes.length - 1);
       }
-      final raw = utf8.decode(bytes, allowMalformed: true);
+      var raw = utf8.decode(bytes, allowMalformed: true);
+      if (wasTruncated) raw = '$raw… [line truncated]';
       final parsed = const LogLineParser().parse(raw);
       if (!matcher.matches(raw, parsed)) {
         return false;
@@ -280,32 +289,39 @@ Future<void> _searchWorker(Map<String, Object?> request) async {
     while (position < totalBytes) {
       await file.setPosition(position);
       final next = await file.read(min(chunkSize, totalBytes - position));
-      final baseOffset = position - carry.length;
-      final data = <int>[...carry, ...next];
-      var lineStart = 0;
-      for (var index = 0; index < data.length; index += 1) {
-        if (data[index] != 0x0A) {
-          continue;
-        }
-        final shouldStop = await processLine(
-          data.sublist(lineStart, index),
-          baseOffset + lineStart,
-          baseOffset + index + 1,
-        );
-        lineStart = index + 1;
-        if (shouldStop) {
-          break scan;
+      for (var index = 0; index < next.length; index += 1) {
+        final absolute = position + index;
+        final byte = next[index];
+        if (byte == 0x0A) {
+          final shouldStop = await processLine(
+            lineBytes,
+            lineStart,
+            absolute + 1,
+            wasTruncated: lineTruncated,
+          );
+          lineStart = absolute + 1;
+          lineBytes = <int>[];
+          lineTruncated = false;
+          if (shouldStop) break scan;
+        } else if (lineBytes.length < maximumBufferedLineBytes) {
+          lineBytes.add(byte);
+        } else {
+          lineTruncated = true;
         }
       }
-      carry = data.sublist(lineStart);
       position += next.length;
       sendPort.send(<String, Object?>{
         'type': 'progress',
         'value': totalBytes == 0 ? 1.0 : position / totalBytes,
       });
     }
-    if (!truncated && carry.isNotEmpty) {
-      await processLine(carry, totalBytes - carry.length, totalBytes);
+    if (!truncated && (lineBytes.isNotEmpty || lineTruncated)) {
+      await processLine(
+        lineBytes,
+        lineStart,
+        totalBytes,
+        wasTruncated: lineTruncated,
+      );
     }
     sendPort.send(<String, Object?>{
       'type': 'done',

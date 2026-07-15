@@ -87,4 +87,22 @@ void main() {
 
     expect(result.lines.map((line) => line.text), contains('target-value'));
   });
+
+  test('bounds memory for a physical line larger than maximumLineBytes',
+      () async {
+    await file.writeAsString('${'x' * 200000}\nlast\n');
+    final reader = FileChunkReader(
+      file.path,
+      chunkSizeBytes: 1024,
+      maximumLineBytes: 64,
+    );
+
+    final first = await reader.readAfter(0);
+
+    expect(first.lines.first.text.length, lessThan(120));
+    expect(first.lines.first.text, contains('line truncated'));
+    expect(first.lines.first.endOffset, 200001);
+    final next = await reader.readAfter(first.lines.first.endOffset);
+    expect(next.lines.single.text, 'last');
+  });
 }

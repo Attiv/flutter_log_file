@@ -53,15 +53,8 @@ final class FileChunkReader {
     if (length == 0) {
       return _empty(0);
     }
-    var start = max(0, length - chunkSizeBytes);
-    List<LogFileLine> lines = const [];
-    while (true) {
-      lines = await _readAligned(start, length);
-      if (lines.length >= maxLines || start == 0) {
-        break;
-      }
-      start = max(0, start - chunkSizeBytes);
-    }
+    final start = await _tailStart(length, maxLines);
+    var lines = await _readAligned(start, length);
     if (lines.length > maxLines) {
       lines = lines.sublist(lines.length - maxLines);
     }
@@ -85,6 +78,12 @@ final class FileChunkReader {
     var lines = await _readAligned(start, end);
     while (lines.isEmpty && start > 0 && end - start < maximumLineBytes) {
       start = max(0, start - chunkSizeBytes);
+      lines = await _readAligned(start, end);
+    }
+    if (lines.isEmpty && end > 0) {
+      var target = end - 1;
+      if (await _byteAt(target) == 0x0A && target > 0) target -= 1;
+      start = await _lineStart(target);
       lines = await _readAligned(start, end);
     }
     final actualStart = lines.isEmpty ? end : lines.first.startOffset;
@@ -143,45 +142,51 @@ final class FileChunkReader {
     }
     final file = await File(filePath).open();
     try {
-      await file.setPosition(start);
-      final bytes = await file.read(end - start);
-      var alignedStartIndex = 0;
-      var absoluteStart = start;
-      if (start > 0) {
-        await file.setPosition(start - 1);
-        final previous = await file.readByte();
-        if (previous != 0x0A) {
-          final newline = bytes.indexOf(0x0A);
-          if (newline < 0) {
-            return const [];
-          }
-          alignedStartIndex = newline + 1;
-          absoluteStart += alignedStartIndex;
-        }
-      }
-
       final result = <LogFileLine>[];
-      var lineStart = alignedStartIndex;
-      for (var index = alignedStartIndex; index < bytes.length; index += 1) {
-        if (bytes[index] != 0x0A) {
-          continue;
+      final fileLength = await file.length();
+      var position = start;
+      var lineStart = start;
+      var aligned = start == 0 || await _byteAtWith(file, start - 1) == 0x0A;
+      var lineBytes = <int>[];
+      var lineTruncated = false;
+      while (position < end) {
+        await file.setPosition(position);
+        final bytes = await file.read(min(chunkSizeBytes, end - position));
+        for (var index = 0; index < bytes.length; index += 1) {
+          final absolute = position + index;
+          final byte = bytes[index];
+          if (!aligned) {
+            if (byte == 0x0A) {
+              aligned = true;
+              lineStart = absolute + 1;
+            }
+            continue;
+          }
+          if (byte == 0x0A) {
+            result.add(
+              LogFileLine(
+                text: _decodeLine(lineBytes, lineTruncated),
+                startOffset: lineStart,
+                endOffset: absolute + 1,
+              ),
+            );
+            lineStart = absolute + 1;
+            lineBytes = <int>[];
+            lineTruncated = false;
+          } else if (lineBytes.length < maximumLineBytes) {
+            lineBytes.add(byte);
+          } else {
+            lineTruncated = true;
+          }
         }
-        final contentEnd =
-            index > lineStart && bytes[index - 1] == 0x0D ? index - 1 : index;
-        result.add(
-          LogFileLine(
-            text: utf8.decode(bytes.sublist(lineStart, contentEnd)),
-            startOffset: absoluteStart + lineStart - alignedStartIndex,
-            endOffset: start + index + 1,
-          ),
-        );
-        lineStart = index + 1;
+        position += bytes.length;
+        if (bytes.isEmpty) break;
       }
-      if (lineStart < bytes.length && end == await file.length()) {
+      if (aligned && lineStart < end && end == fileLength) {
         result.add(
           LogFileLine(
-            text: utf8.decode(bytes.sublist(lineStart)),
-            startOffset: absoluteStart + lineStart - alignedStartIndex,
+            text: _decodeLine(lineBytes, lineTruncated),
+            startOffset: lineStart,
             endOffset: end,
           ),
         );
@@ -229,6 +234,55 @@ final class FileChunkReader {
     } finally {
       await file.close();
     }
+  }
+
+  Future<int> _tailStart(int length, int maxLines) async {
+    final file = await File(filePath).open();
+    try {
+      var position = length;
+      if (position > 0) {
+        await file.setPosition(position - 1);
+        if (await file.readByte() == 0x0A) position -= 1;
+      }
+      var newlineCount = 0;
+      while (position > 0) {
+        final blockStart = max(0, position - chunkSizeBytes);
+        await file.setPosition(blockStart);
+        final bytes = await file.read(position - blockStart);
+        for (var index = bytes.length - 1; index >= 0; index -= 1) {
+          if (bytes[index] != 0x0A) continue;
+          newlineCount += 1;
+          if (newlineCount == maxLines) return blockStart + index + 1;
+        }
+        position = blockStart;
+      }
+      return 0;
+    } finally {
+      await file.close();
+    }
+  }
+
+  Future<int> _byteAt(int offset) async {
+    final file = await File(filePath).open();
+    try {
+      return _byteAtWith(file, offset);
+    } finally {
+      await file.close();
+    }
+  }
+
+  Future<int> _byteAtWith(RandomAccessFile file, int offset) async {
+    await file.setPosition(offset);
+    return file.readByte();
+  }
+
+  String _decodeLine(List<int> bytes, bool truncated) {
+    var value = List<int>.of(bytes);
+    if (value.isNotEmpty && value.last == 0x0D) {
+      value = value.sublist(0, value.length - 1);
+    }
+    final text = utf8.decode(value, allowMalformed: true);
+    return truncated ? '$text… [line truncated]' : text;
   }
 
   LogFileChunk _empty(int offset, {bool hasMoreAfter = false}) => LogFileChunk(
