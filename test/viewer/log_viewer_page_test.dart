@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_log_file/flutter_log_file.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-final class FakeLogViewerRepository implements LogViewerRepository {
+final class FakeLogViewerRepository
+    implements LogViewerRepository, LogDownloadsRepository {
   FakeLogViewerRepository(this.files);
 
   List<LogFileInfo> files;
   List<String> deleted = [];
   List<String> shared = [];
   int cleanupCalls = 0;
+  List<String> exported = [];
+
+  @override
+  Future<String?> exportToDownloads({Iterable<String>? filePaths}) async {
+    exported = filePaths?.toList() ?? files.map((file) => file.path).toList();
+    return 'Download/logs.zip';
+  }
 
   @override
   Future<void> cleanup() async => cleanupCalls += 1;
@@ -114,5 +122,44 @@ void main() {
 
     expect(find.text('No log files'), findsOneWidget);
     expect(find.byKey(const Key('refresh-log-files')), findsOneWidget);
+  });
+
+  testWidgets('Downloads saves only selected logs', (tester) async {
+    final repository = FakeLogViewerRepository([
+      info('first.txt', DateTime(2026, 7, 15)),
+      info('second.txt', DateTime(2026, 7, 14)),
+    ]);
+    await tester
+        .pumpWidget(MaterialApp(home: VLogViewerPage(repository: repository)));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('second.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save selected logs to Downloads'));
+    await tester.pumpAndSettle();
+    expect(repository.exported, ['/logs/second.txt']);
+    expect(find.text('Saved to Download/logs.zip'), findsOneWidget);
+  });
+
+  testWidgets('Downloads feedback fits a small screen with large text',
+      (tester) async {
+    tester.view.reset();
+    tester.view.physicalSize = const Size(320, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final repository =
+        FakeLogViewerRepository([info('app.txt', DateTime(2026, 7, 15))]);
+    await tester.pumpWidget(MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: const TextScaler.linear(2)),
+        child: child!,
+      ),
+      home: VLogViewerPage(repository: repository),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('save-logs-to-downloads')));
+    await tester.pumpAndSettle();
+    expect(repository.exported, ['/logs/app.txt']);
+    expect(tester.takeException(), isNull);
   });
 }

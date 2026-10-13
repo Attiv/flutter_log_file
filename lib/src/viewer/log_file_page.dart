@@ -423,7 +423,7 @@ final class _VLogFilePageState extends State<VLogFilePage> {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onLongPress: () => _showCopyActions(index),
-            child: content,
+            child: Material(type: MaterialType.transparency, child: content),
           ),
           if (parsed.level != null)
             SizedBox(

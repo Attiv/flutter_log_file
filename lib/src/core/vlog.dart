@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 
 import '../error/error_capture.dart';
@@ -228,6 +229,35 @@ abstract final class VLog {
     return exported;
   }
 
+  /// Save all logs (or selected managed logs) as a ZIP in Android Downloads.
+  /// Android 10+ saves directly; older versions use the system save picker.
+  /// Returns the saved location, or null when the picker is cancelled.
+  static Future<String?> exportLogsToDownloads(
+      {Iterable<String>? filePaths}) async {
+    await flush();
+    final files = await getLogFiles();
+    final owned = {
+      for (final file in files)
+        path.normalize(path.absolute(file.path)): file.path
+    };
+    final requested =
+        filePaths?.map((p) => path.normalize(path.absolute(p))).toSet() ??
+            owned.keys.toSet();
+    if (requested.isEmpty) throw StateError('No log files to save');
+    if (requested.any((p) => !owned.containsKey(p))) {
+      throw ArgumentError(
+          'Only logs owned by the current configuration can be exported');
+    }
+    return const MethodChannel('flutter_log_file/downloads')
+        .invokeMethod<String>(
+      'exportLogsToDownloads',
+      {
+        'directory': logDirectoryPath,
+        'paths': requested.map((p) => owned[p]!).toList(),
+      },
+    );
+  }
+
   static Future<void> _initInternal(LogConfig config) async {
     _errorCapture?.uninstall();
     _errorCapture = null;
@@ -242,7 +272,15 @@ abstract final class VLog {
       sinks.add(ConsoleSink(config, registry: _registry));
     }
     if (config.fileEnabled) {
-      final directory = await DirectoryResolver(config).resolve();
+      final directory = await DirectoryResolver(
+        config,
+        onMigrationError: (error, stack) => w(
+          'Some old logs could not be moved; originals retained for the next launch',
+          tag: 'VLog',
+          error: error,
+          stackTrace: stack,
+        ),
+      ).resolve();
       manager = LogFileManager(directory: directory, config: config);
       await manager.initialize();
       sinks.add(FileSink(config, manager, registry: _registry));

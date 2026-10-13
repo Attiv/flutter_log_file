@@ -296,7 +296,7 @@ final class FileChunkReader {
   Future<int> _byteAt(int offset) async {
     final file = await File(filePath).open();
     try {
-      return _byteAtWith(file, offset);
+      return await _byteAtWith(file, offset);
     } finally {
       await file.close();
     }

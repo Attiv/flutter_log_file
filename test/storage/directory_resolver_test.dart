@@ -69,4 +69,25 @@ void main() {
       ),
     );
   });
+
+  test('Android can explicitly retain internal storage', () async {
+    final resolver = DirectoryResolver(
+      LogConfig(useExternalStorageOnAndroid: false),
+      isAndroid: true,
+      getExternalDirectory: () async => throw StateError('must not be called'),
+      getSupportDirectory: () async => root,
+    );
+    expect((await resolver.resolve()).path, '${root.path}/logs');
+  });
+
+  test('Android custom paths bypass external storage and migration', () async {
+    final target = '${root.path}/chosen';
+    final resolver = DirectoryResolver(
+      LogConfig(directoryPath: target),
+      isAndroid: true,
+      getExternalDirectory: () async => throw StateError('must not be called'),
+      getSupportDirectory: () async => throw StateError('must not be called'),
+    );
+    expect((await resolver.resolve()).path, target);
+  });
 }

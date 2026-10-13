@@ -1,3 +1,15 @@
+## 0.1.2
+
+* Default Android logs to the app's external files directory and migrate owned
+  logs from the old Support/logs directory without overwriting existing files.
+  Custom paths still take precedence; `useExternalStorageOnAndroid: false`
+  retains internal storage.
+* Add `VLog.exportLogsToDownloads` and viewer actions for all or selected logs.
+  Android 10+ writes a ZIP directly to public Downloads; older Android versions
+  use the system save picker. No broad storage permission is required.
+* Handle export progress, cancellation and errors inside the plugin.
+* Fix log-row Material compatibility and await byte reads before closing files.
+
 ## 0.1.1
 
 * Add validated filename stem templates with `{prefix}` and `{date}` tokens.

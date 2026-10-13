@@ -216,6 +216,8 @@ final class _DemoHomePageState extends State<DemoHomePage>
           const SizedBox(height: 12),
           DropdownButtonFormField<LogLevel>(
             key: const Key('minimum-level-field'),
+            // Retain compatibility with the package's Flutter 3.22 minimum.
+            // ignore: deprecated_member_use
             value: _minimumLevel,
             decoration: const InputDecoration(
               labelText: 'Minimum log level',

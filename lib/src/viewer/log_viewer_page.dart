@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,8 +17,15 @@ abstract interface class LogViewerRepository {
   Future<void> shareFiles(Iterable<String> paths);
 }
 
+/// Optional capability for repositories supporting Android Downloads export.
+/// Existing custom [LogViewerRepository] implementations remain compatible.
+abstract interface class LogDownloadsRepository {
+  Future<String?> exportToDownloads({Iterable<String>? filePaths});
+}
+
 /// Default repository backed by the active [VLog] session.
-final class DefaultLogViewerRepository implements LogViewerRepository {
+final class DefaultLogViewerRepository
+    implements LogViewerRepository, LogDownloadsRepository {
   const DefaultLogViewerRepository();
 
   @override
@@ -29,6 +37,10 @@ final class DefaultLogViewerRepository implements LogViewerRepository {
 
   @override
   Future<List<LogFileInfo>> listFiles() => VLog.getLogFiles();
+
+  @override
+  Future<String?> exportToDownloads({Iterable<String>? filePaths}) =>
+      VLog.exportLogsToDownloads(filePaths: filePaths);
 
   @override
   Future<void> shareFiles(Iterable<String> paths) async {
@@ -49,10 +61,12 @@ final class VLogViewerPage extends StatefulWidget {
     super.key,
     this.repository,
     this.filePageBuilder,
+    this.showDownloadsExport = true,
   });
 
   final LogViewerRepository? repository;
   final VLogFilePageBuilder? filePageBuilder;
+  final bool showDownloadsExport;
 
   @override
   State<VLogViewerPage> createState() => _VLogViewerPageState();
@@ -65,6 +79,31 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
   List<LogFileInfo> _files = const [];
   Object? _error;
   bool _loading = true;
+  bool _saving = false;
+  String? _exportMessage;
+
+  Future<void> _saveToDownloads() async {
+    if (_saving) return;
+    final paths = _selected.isEmpty ? null : _selected.toList();
+    setState(() {
+      _saving = true;
+      _exportMessage = null;
+    });
+    String message;
+    try {
+      final location = await (_repository as LogDownloadsRepository)
+          .exportToDownloads(filePaths: paths);
+      message = location == null ? 'Save cancelled' : 'Saved to $location';
+    } catch (error) {
+      final detail = error is PlatformException ? error.message : '$error';
+      message = 'Could not save logs: ${detail ?? 'Please try again'}';
+    }
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _exportMessage = message;
+    });
+  }
 
   @override
   void initState() {
@@ -120,17 +159,19 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
                 IconButton(
                   key: const Key('delete-selected-logs'),
                   tooltip: 'Delete',
-                  onPressed: _confirmDelete,
+                  onPressed: _saving ? null : _confirmDelete,
                   icon: const Icon(Icons.delete_outline),
                 ),
               ]
             : [
                 IconButton(
                   tooltip: 'Clean up expired logs',
-                  onPressed: () async {
-                    await _repository.cleanup();
-                    await _reload();
-                  },
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          await _repository.cleanup();
+                          await _reload();
+                        },
                   icon: const Icon(Icons.auto_delete_outlined),
                 ),
                 IconButton(
@@ -142,6 +183,56 @@ final class _VLogViewerPageState extends State<VLogViewerPage> {
               ],
       ),
       body: _body(),
+      bottomNavigationBar: widget.showDownloadsExport &&
+              defaultTargetPlatform == TargetPlatform.android &&
+              _repository is LogDownloadsRepository
+          ? SafeArea(
+              top: false,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.45),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_repository is DefaultLogViewerRepository) ...[
+                        SelectableText(
+                          VLog.logDirectoryPath ?? 'File logging unavailable',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 3,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      FilledButton.icon(
+                        key: const Key('save-logs-to-downloads'),
+                        onPressed: _saving || _loading || _files.isEmpty
+                            ? null
+                            : _saveToDownloads,
+                        icon: _saving
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.save_alt),
+                        label: Text(_saving
+                            ? 'Saving…'
+                            : selecting
+                                ? 'Save selected logs to Downloads'
+                                : 'Save all logs to Downloads'),
+                      ),
+                      if (_exportMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Semantics(
+                            liveRegion: true, child: Text(_exportMessage!)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 

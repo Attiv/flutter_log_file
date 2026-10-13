@@ -2,7 +2,7 @@
 
 English | [简体中文](README_CN.md)
 
-`flutter_log_file` is a Flutter logging package for Android and Windows. Its public entry point is **`VLog`**. It supports terminal output, files in the app-private directory, daily and size-based rotation, JSON/object formatting, error capture, and lazy loading of large log files.
+`flutter_log_file` is a Flutter logging package for Android and Windows. Its public entry point is **`VLog`**. It supports terminal output, files in app-specific directories, daily and size-based rotation, JSON/object formatting, error capture, and lazy loading of large log files.
 
 ## Features
 
@@ -10,7 +10,7 @@ English | [简体中文](README_CN.md)
 - Independently configurable console and file sinks, level filters, and formatting;
 - Timestamp, source filename, source line number, and level for quick location;
 - Configurable ANSI colors in the console without writing control characters to files;
-- App Support private directories by default on Android and Windows, with no public storage permission required;
+- Android external app files and Windows App Support by default, with no broad storage permission required;
 - Default filename `app_log_yyyy-MM-dd.txt`, with configurable prefix, extension, and daily splitting;
 - Configurable retention and rotation, defaulting to 30 days and 50 MB per file;
 - Count- and byte-bounded asynchronous queue, defaulting to 10,000 entries and 8 MB retained data;
@@ -83,7 +83,7 @@ For multiline pretty-printed JSON, every physical line repeats the timestamp, le
 
 Default paths:
 
-- Android: `logs/` under the app-private Support directory;
+- Android: the external app files directory, normally `/storage/emulated/0/Android/data/<package>/files`;
 - Windows: `logs/` under the App Support directory, usually inside the application's `%APPDATA%` directory.
 
 No public storage permission is required. You can provide an absolute path or an asynchronous resolver:
@@ -123,6 +123,37 @@ LogConfig(splitByDay: false, filePrefix: 'device')
 ```
 
 If the app remains running across midnight, the next log entry automatically switches to the new day's file. Set `retentionDays: 0` to disable automatic expiry cleanup. `maxFileSizeBytes` controls file segmentation within the same day.
+
+## Downloads Export (Android)
+
+`VLogViewerPage` includes **Save all logs to Downloads**. Long-press files to
+select them, then use **Save selected logs to Downloads** or the existing Share
+button. The viewer shows the active directory, saving progress and the result.
+
+```dart
+final location = await VLog.exportLogsToDownloads();
+// Or: await VLog.exportLogsToDownloads(filePaths: selectedLogPaths);
+// location is null if the system save picker was cancelled.
+```
+
+The plugin flushes pending log writes and exports only files owned by the active
+configuration. Android 10+ saves a uniquely named ZIP directly in public Downloads
+using MediaStore. Older Android versions open the system save picker; choose
+Downloads there. The plugin registers automatically: no app-specific platform
+channel, activity code or broad storage permissions are needed. Windows callers
+can continue to use `VLog.exportLogs(destinationDirectory)`.
+
+When using the Android default directory, existing owned logs in Support/logs
+are migrated, with timestamps retained and filename collisions handled without
+overwriting. Migration errors retain the originals and log a warning while new
+logs continue externally. Set `useExternalStorageOnAndroid: false` to retain
+internal storage. Explicit `directoryPath` / `directoryResolver` values take
+precedence and are not migrated automatically. File-manager access to Android/data
+may still be restricted by Android; the Downloads export provides a public copy.
+
+Custom viewer repositories can optionally implement `LogDownloadsRepository`;
+existing `LogViewerRepository` implementations remain compatible. Set
+`showDownloadsExport: false` to hide the export controls.
 
 ## JSON and Objects
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-`flutter_log_file` 是一个面向 Android 和 Windows 的 Flutter 日志 Package，入口名称为 **`VLog`**。它同时支持终端输出、App 私有目录文件、跨日/按大小轮转、JSON/对象格式化、异常捕获和大文件懒加载查看。
+`flutter_log_file` 是一个面向 Android 和 Windows 的 Flutter 日志 Package，入口名称为 **`VLog`**。它同时支持终端输出、App 专属目录文件、跨日/按大小轮转、JSON/对象格式化、异常捕获和大文件懒加载查看。
 
 ## 功能
 
@@ -10,7 +10,7 @@
 - 控制台和文件 Sink 可分别启停、过滤等级和格式化；
 - 时间、调用文件名、调用行号、等级始终可定位；
 - 控制台 ANSI 颜色可配置，文件不会写入颜色控制字符；
-- Android/Windows 默认使用 App Support 私有目录，无公共存储权限；
+- Android 默认使用应用外部 files 目录，Windows 使用 App Support，无需申请广泛存储权限；
 - 默认 `app_log_yyyy-MM-dd.txt`，支持自定义前缀、扩展名和按天开文件；
 - 默认保留 30 天、单文件 50 MB，均可配置；
 - 异步队列同时限制条数和保留字节数，默认 10,000 条和 8 MB；
@@ -83,7 +83,7 @@ Future<void> main() async {
 
 默认路径：
 
-- Android：应用 Support 私有目录下的 `logs/`；
+- Android：应用外部文件目录，通常是 `/storage/emulated/0/Android/data/<包名>/files`；
 - Windows：应用 Support 目录下的 `logs/`（通常位于 `%APPDATA%` 应用目录）。
 
 不需要申请公共存储权限。开发者可传入绝对路径或异步解析器：
@@ -122,6 +122,31 @@ LogConfig(splitByDay: false, filePrefix: 'device')
 ```
 
 应用不重启跨过零点时，下一条日志会自动切换到新日期文件。`retentionDays: 0` 表示关闭自动过期清理；`maxFileSizeBytes` 控制同一天的分片大小。
+
+## 导出到 Downloads（Android）
+
+日志列表内置 **Save all logs to Downloads**。长按选择日志后，可使用
+**Save selected logs to Downloads** 或原有的分享按钮。页面显示当前目录、保存进度和结果。
+
+```dart
+final location = await VLog.exportLogsToDownloads();
+// 仅导出选中文件：VLog.exportLogsToDownloads(filePaths: selectedLogPaths)
+// 用户取消系统保存窗口时返回 null。
+```
+
+插件先刷新缓冲区，只导出当前配置管理的日志。Android 10 及以上通过 MediaStore
+直接将 ZIP 保存到公共 Downloads；旧版 Android 打开系统保存窗口，可选择 Downloads。
+原生插件自动注册，App 无需自行编写平台通道或 Activity 代码，也无需广泛存储权限。
+Windows 可继续使用 `VLog.exportLogs(destinationDirectory)`。
+
+Android 默认目录会自动迁移原 Support/logs 下匹配当前配置的旧日志，保留修改时间，
+同名冲突时使用分卷名称，避免覆盖。迁移失败保留原文件并记录警告，新日志仍写入外部目录。
+设置 `useExternalStorageOnAndroid: false` 可继续使用内部目录。显式指定的
+`directoryPath` / `directoryResolver` 优先，不自动迁移。Android 可能限制文件管理器
+访问 Android/data，Downloads 导出提供无需 adb 的公共副本。
+
+自定义日志仓库可选实现 `LogDownloadsRepository`；原有 `LogViewerRepository` 实现保持兼容。
+查看页设置 `showDownloadsExport: false` 可隐藏导出控件。
 
 ## JSON 和对象
 

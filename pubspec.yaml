@@ -1,6 +1,6 @@
 name: flutter_log_file
 description: Configurable console and rotating file logs with a lazy Flutter viewer.
-version: 0.1.1
+version: 0.1.2
 homepage: https://pub.dev/packages/flutter_log_file
 
 environment:
@@ -14,6 +14,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   share_plus: ^12.0.2
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:
@@ -21,3 +22,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.attiv.flutter_log_file
+        pluginClass: FlutterLogFilePlugin

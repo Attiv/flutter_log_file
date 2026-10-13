@@ -30,6 +30,7 @@ final class LogConfig {
     this.consoleUseColors = true,
     this.directoryPath,
     this.directoryResolver,
+    this.useExternalStorageOnAndroid = true,
     this.filePrefix = 'app_log',
     String? fileNamePattern,
     this.fileExtension = 'txt',
@@ -140,6 +141,11 @@ final class LogConfig {
   final bool consoleUseColors;
   final String? directoryPath;
   final LogDirectoryResolver? directoryResolver;
+
+  /// Use `Android/data/<package>/files` when no custom directory is supplied.
+  /// Owned logs from the previous Support/logs default are migrated on startup.
+  /// Set false to retain the internal Support/logs location on Android.
+  final bool useExternalStorageOnAndroid;
   final String filePrefix;
 
   /// Filename stem template using `{prefix}` and, for daily logs, `{date}`.
